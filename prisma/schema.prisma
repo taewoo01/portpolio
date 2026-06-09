@@ -1,0 +1,140 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Workspace {
+  dev
+  study
+}
+
+enum TaskWorkspace {
+  dev
+  study
+  other
+  exercise
+  appointment
+  competition
+  exam
+}
+
+enum DocumentStatus {
+  draft
+  done
+  review
+}
+
+model Folder {
+  id        String    @id @default(cuid())
+  parentId  String?   @map("parent_id")
+  parent    Folder?   @relation("FolderToFolder", fields: [parentId], references: [id], onDelete: Cascade)
+  children  Folder[]  @relation("FolderToFolder")
+  workspace Workspace
+  name      String
+  createdBy String?   @map("created_by")
+  sortOrder Int       @default(0) @map("sort_order")
+  documents Document[]
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  @@map("folders")
+}
+
+model Document {
+  id        String         @id @default(cuid())
+  folderId  String?        @map("folder_id")
+  folder    Folder?        @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  workspace Workspace
+  title     String
+  content   String         @default("")
+  status    DocumentStatus @default(draft)
+  tags      String[]       @default([])
+  createdBy String?        @map("created_by")
+  blogPosts BlogPost[]
+  createdAt DateTime       @default(now()) @map("created_at")
+  updatedAt DateTime       @updatedAt @map("updated_at")
+
+  @@map("documents")
+}
+
+model Event {
+  id          String        @id @default(cuid())
+  title       String
+  description String?
+  startAt     DateTime      @map("start_at")
+  endAt       DateTime?     @map("end_at")
+  workspace   TaskWorkspace
+  allDay      Boolean       @default(false) @map("all_day")
+  createdBy   String?       @map("created_by")
+  todos       Todo[]
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+
+  @@map("events")
+}
+
+model Todo {
+  id        String        @id @default(cuid())
+  title     String
+  completed Boolean       @default(false)
+  dueDate   DateTime?     @map("due_date")
+  workspace TaskWorkspace
+  eventId   String?       @map("event_id")
+  event     Event?        @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  createdBy String?       @map("created_by")
+  sortOrder Int           @default(0) @map("sort_order")
+  createdAt DateTime      @default(now()) @map("created_at")
+  updatedAt DateTime      @updatedAt @map("updated_at")
+
+  @@map("todos")
+}
+
+model StudySession {
+  id        String    @id @default(cuid())
+  title     String
+  startAt   DateTime  @map("start_at")
+  endAt     DateTime? @map("end_at")
+  duration  Int?
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  @@map("study_sessions")
+}
+
+model AboutProfile {
+  id        String   @id @default(cuid())
+  owner     String   @unique
+  name      String
+  role      String
+  bio       String[]
+  skills    String[]
+  links     Json     @default("[]")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("about_profiles")
+}
+
+model BlogPost {
+  id          String    @id @default(cuid())
+  documentId  String?   @map("document_id")
+  document    Document? @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  workspace   Workspace
+  title       String
+  slug        String    @unique
+  content     String
+  excerpt     String?
+  createdBy   String?   @map("created_by")
+  published   Boolean   @default(false)
+  publishedAt DateTime? @map("published_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  @@map("blog_posts")
+}
