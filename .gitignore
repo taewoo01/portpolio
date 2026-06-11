@@ -37,6 +37,12 @@ yarn-error.log*
 # vercel
 .vercel
 
+# electron build output
+/dist-electron/
+
+# shell artifacts
+$env
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

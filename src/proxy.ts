@@ -5,13 +5,17 @@ const VALID_USERS = ["taewoo", "yujin"];
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  if (pathname === "/login") return NextResponse.next();
+  const res = NextResponse.next();
+  res.headers.set("x-pathname", pathname);
+
+  // 인증 불필요 경로
+  if (pathname === "/login" || pathname === "/timer/float") return res;
 
   const user = request.cookies.get("user")?.value;
   if (!user || !VALID_USERS.includes(user)) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
-  return NextResponse.next();
+  return res;
 }
 
 export const config = {

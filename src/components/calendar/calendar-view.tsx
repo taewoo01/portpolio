@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { motion } from "framer-motion";
 import { Calendar, dateFnsLocalizer, type SlotInfo } from "react-big-calendar";
 import { format, getDay, parse, startOfWeek } from "date-fns";
 import { ko } from "date-fns/locale";
@@ -66,6 +67,14 @@ export function CalendarView({ events, currentUser }: { events: EventModel[]; cu
   const [selectedEvent, setSelectedEvent] = useState<EventModel | null>(null);
   const [slotDate, setSlotDate] = useState<Date | null>(null);
   const [filter, setFilter] = useState<FilterUser>("all");
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
 
   const filteredEvents = useMemo(
     () => filter === "all" ? events : events.filter((e) => e.createdBy === filter),
@@ -78,7 +87,9 @@ export function CalendarView({ events, currentUser }: { events: EventModel[]; cu
         id: event.id,
         title: event.title,
         start: event.startAt,
-        end: event.endAt ?? event.startAt,
+        end: event.allDay
+          ? new Date((event.endAt ?? event.startAt).getTime() + 86400000)
+          : (event.endAt ?? event.startAt),
         allDay: event.allDay,
         resource: event,
       })),
@@ -99,21 +110,26 @@ export function CalendarView({ events, currentUser }: { events: EventModel[]; cu
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <h2 className="text-lg font-medium">캘린더</h2>
-          <div className="flex gap-1 rounded-md border p-0.5 text-sm">
+          <div className="flex gap-0 rounded-lg border p-0.5 text-sm">
             {(["all", "taewoo", "yujin"] as FilterUser[]).map((f) => (
               <button
                 key={f}
                 onClick={() => setFilter(f)}
-                className={`rounded px-2.5 py-1 transition-colors ${
-                  filter === f
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
+                className="relative rounded-md px-2.5 py-1 transition-colors duration-150"
               >
-                {FILTER_LABELS[f]}
+                {filter === f && (
+                  <motion.div
+                    layoutId="filter-indicator"
+                    className="absolute inset-0 rounded-md bg-primary"
+                    transition={{ type: "spring", stiffness: 500, damping: 35 }}
+                  />
+                )}
+                <span className={`relative z-10 ${filter === f ? "font-semibold text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
+                  {FILTER_LABELS[f]}
+                </span>
               </button>
             ))}
           </div>
@@ -123,14 +139,14 @@ export function CalendarView({ events, currentUser }: { events: EventModel[]; cu
         </Button>
       </div>
 
-      <div className="h-[640px] rounded-md border p-2">
+      <div className="h-[480px] md:h-[640px] rounded-md border p-2">
         <Calendar
           localizer={localizer}
           culture="ko"
           events={calendarEvents}
           startAccessor="start"
           endAccessor="end"
-          views={["month", "week"]}
+          views={isMobile ? ["month", "agenda"] : ["month", "week"]}
           defaultView="month"
           selectable
           popup

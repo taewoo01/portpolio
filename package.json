@@ -2,12 +2,30 @@
   "name": "portpolio",
   "version": "0.1.0",
   "private": true,
+  "main": "electron/main.js",
   "scripts": {
     "dev": "next dev",
     "build": "prisma generate && next build",
     "start": "next start",
     "lint": "eslint",
-    "migrate": "prisma migrate dev && prisma generate"
+    "migrate": "prisma migrate dev && prisma generate",
+    "electron": "electron .",
+    "electron:dev": "concurrently \"next dev -p 3001\" \"wait-on http://localhost:3001 && electron .\"",
+    "electron:build": "electron-builder"
+  },
+  "build": {
+    "appId": "com.portpolio.app",
+    "productName": "portpolio",
+    "directories": {
+      "output": "dist-electron"
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "files": [
+      "electron/**/*",
+      "package.json"
+    ]
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",
@@ -21,6 +39,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.4.0",
+    "framer-motion": "^12.40.0",
     "lucide-react": "^1.17.0",
     "next": "16.2.7",
     "next-themes": "^0.4.6",
@@ -46,11 +65,15 @@
     "@types/react": "^19",
     "@types/react-big-calendar": "^1.16.3",
     "@types/react-dom": "^19",
+    "concurrently": "^9.2.1",
     "dotenv": "^17.4.2",
+    "electron": "^41.7.1",
+    "electron-builder": "^26.15.2",
     "eslint": "^9",
     "eslint-config-next": "16.2.7",
     "tailwindcss": "^4",
     "tsx": "^4.22.4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "wait-on": "^9.0.10"
   }
 }

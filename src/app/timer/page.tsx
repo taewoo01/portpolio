@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { TimerWidget } from "@/components/timer/timer-widget";
+import { FloatButton } from "@/components/timer/float-button";
 import { TodayActivity } from "@/components/timer/today-activity";
 import { StudyChart } from "@/components/timer/study-chart";
 import {
@@ -23,7 +24,10 @@ export default async function TimerPage() {
 
   return (
     <main className="mx-auto max-w-2xl space-y-6 px-4 py-8">
-      <h1 className="text-2xl font-bold">타이머</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">타이머</h1>
+        <FloatButton />
+      </div>
 
       <Suspense>
         <TimerWidget active={active} />

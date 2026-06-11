@@ -25,10 +25,12 @@ export function FolderSidebar({
   workspace,
   tree,
   currentUser,
+  onNavigate,
 }: {
   workspace: Workspace;
   tree: FolderTree;
   currentUser: User | null;
+  onNavigate?: () => void;
 }) {
   const { isPending, openCreateFolder, openCreateDocument } = useWikiActions();
   const isEmpty = tree.folders.length === 0 && tree.rootDocuments.length === 0;
@@ -64,10 +66,10 @@ export function FolderSidebar({
       </div>
       <nav className="space-y-0.5 text-sm">
         {tree.folders.map((node) => (
-          <FolderNodeItem key={node.id} workspace={workspace} node={node} depth={0} currentUser={currentUser} />
+          <FolderNodeItem key={node.id} workspace={workspace} node={node} depth={0} currentUser={currentUser} onNavigate={onNavigate} />
         ))}
         {tree.rootDocuments.map((doc) => (
-          <DocumentLink key={doc.id} workspace={workspace} doc={doc} depth={0} currentUser={currentUser} />
+          <DocumentLink key={doc.id} workspace={workspace} doc={doc} depth={0} currentUser={currentUser} onNavigate={onNavigate} />
         ))}
         {isEmpty && (
           <p className="px-2 py-1 text-muted-foreground">폴더나 문서가 없습니다.</p>
@@ -82,11 +84,13 @@ function DocumentLink({
   doc,
   depth,
   currentUser,
+  onNavigate,
 }: {
   workspace: Workspace;
   doc: WikiDocSummary;
   depth: number;
   currentUser: User | null;
+  onNavigate?: () => void;
 }) {
   const pathname = usePathname();
   const href = `/${workspace}/${doc.id}`;
@@ -96,6 +100,7 @@ function DocumentLink({
   return (
     <Link
       href={href}
+      onClick={onNavigate}
       style={{ paddingLeft: `${depth * 16 + 28}px` }}
       className={cn(
         "flex items-center gap-1.5 truncate rounded-md py-1.5 pr-2 transition-colors hover:bg-accent hover:text-accent-foreground",
@@ -119,11 +124,13 @@ function FolderNodeItem({
   node,
   depth,
   currentUser,
+  onNavigate,
 }: {
   workspace: Workspace;
   node: FolderTreeNode;
   depth: number;
   currentUser: User | null;
+  onNavigate?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const { isPending, openCreateFolder, openCreateDocument, openRenameFolder, openDeleteFolder } =
@@ -211,10 +218,10 @@ function FolderNodeItem({
       {open && (
         <div>
           {node.children.map((child) => (
-            <FolderNodeItem key={child.id} workspace={workspace} node={child} depth={depth + 1} currentUser={currentUser} />
+            <FolderNodeItem key={child.id} workspace={workspace} node={child} depth={depth + 1} currentUser={currentUser} onNavigate={onNavigate} />
           ))}
           {node.documents.map((doc) => (
-            <DocumentLink key={doc.id} workspace={workspace} doc={doc} depth={depth + 1} currentUser={currentUser} />
+            <DocumentLink key={doc.id} workspace={workspace} doc={doc} depth={depth + 1} currentUser={currentUser} onNavigate={onNavigate} />
           ))}
           <button
             type="button"
