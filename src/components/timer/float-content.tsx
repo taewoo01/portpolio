@@ -24,6 +24,10 @@ export function FloatContent({ onClose }: { onClose: () => void }) {
   const channelRef = useRef<BroadcastChannel | null>(null);
   const imgRef = useRef<HTMLImageElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  // 페이지 이동 후에도 독립적으로 시간 계산하기 위한 ref
+  const startedAtRef = useRef<number | null>(null);
+  const accumulatedMsRef = useRef<number>(0);
+  const runningRef = useRef(false);
 
   const gifActive = running && !paused;
 
@@ -59,10 +63,27 @@ export function FloatContent({ onClose }: { onClose: () => void }) {
         setPaused(msg.paused);
         setElapsed(msg.elapsed);
         if (msg.title) setTitle(msg.title);
+        // 타임스탬프 저장 → 자체 interval에서 독립 계산
+        startedAtRef.current = msg.startedAt ?? null;
+        accumulatedMsRef.current = msg.accumulatedMs ?? msg.elapsed * 1000;
+        runningRef.current = msg.running;
       }
     };
     channel.postMessage({ type: "REQUEST_STATE" });
     return () => channel.close();
+  }, []);
+
+  // 메인 페이지와 무관하게 자체적으로 시간 갱신
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (runningRef.current && startedAtRef.current !== null) {
+        const computed = Math.floor(
+          (accumulatedMsRef.current + (Date.now() - startedAtRef.current)) / 1000
+        );
+        setElapsed(computed);
+      }
+    }, 1000);
+    return () => clearInterval(interval);
   }, []);
 
   function send(msg: TimerMessage) {

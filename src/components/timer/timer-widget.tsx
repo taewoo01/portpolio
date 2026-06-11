@@ -29,12 +29,21 @@ export function TimerWidget({ active }: { active: StudySessionModel | null }) {
 
   const isRunning = Boolean(sessionId);
 
+  // float 창이 독립적으로 시간 계산할 수 있도록 타임스탬프 추적
+  const startedAtRef = useRef<number | null>(
+    active ? new Date(active.startAt).getTime() : null
+  );
+  const accumulatedMsRef = useRef<number>(0);
+
   const actionsRef = useRef({
     start: (_t: string) => {},
     pause: () => {},
     resume: () => {},
     stop: () => {},
-    getState: (): TimerMessage => ({ type: "STATE", running: false, paused: false, elapsed: 0, title: "" }),
+    getState: (): TimerMessage => ({
+      type: "STATE", running: false, paused: false, elapsed: 0, title: "",
+      startedAt: null, accumulatedMs: 0,
+    }),
   });
 
   actionsRef.current = {
@@ -42,6 +51,8 @@ export function TimerWidget({ active }: { active: StudySessionModel | null }) {
       if (sessionId || paused) return;
       startTransition(async () => {
         const id = await startSessionAction(t);
+        startedAtRef.current = Date.now();
+        accumulatedMsRef.current = 0;
         setSessionId(id);
         setTitle(t);
         setElapsed(0);
@@ -54,6 +65,8 @@ export function TimerWidget({ active }: { active: StudySessionModel | null }) {
       const id = sessionId;
       startTransition(async () => {
         await stopSessionAction(id);
+        accumulatedMsRef.current = elapsed * 1000;
+        startedAtRef.current = null;
         setSessionId(null);
         setPaused(true);
       });
@@ -64,6 +77,7 @@ export function TimerWidget({ active }: { active: StudySessionModel | null }) {
       const t = title;
       startTransition(async () => {
         const id = await startSessionAction(t);
+        startedAtRef.current = Date.now();
         setSessionId(id);
         setPaused(false);
       });
@@ -74,12 +88,16 @@ export function TimerWidget({ active }: { active: StudySessionModel | null }) {
         const id = sessionId;
         startTransition(async () => {
           await stopSessionAction(id);
+          startedAtRef.current = null;
+          accumulatedMsRef.current = 0;
           setSessionId(null);
           setTitle("");
           setElapsed(0);
           setPaused(false);
         });
       } else {
+        startedAtRef.current = null;
+        accumulatedMsRef.current = 0;
         setTitle("");
         setElapsed(0);
         setPaused(false);
@@ -91,6 +109,8 @@ export function TimerWidget({ active }: { active: StudySessionModel | null }) {
       paused,
       elapsed,
       title,
+      startedAt: startedAtRef.current,
+      accumulatedMs: accumulatedMsRef.current,
     }),
   };
 
@@ -123,7 +143,7 @@ export function TimerWidget({ active }: { active: StudySessionModel | null }) {
     return () => channel.close();
   }, []);
 
-  // 상태 변경 시 플로팅 창에 브로드캐스트
+  // 상태 변경 시 플로팅 창에 브로드캐스트 (startedAt/accumulatedMs 포함)
   useEffect(() => {
     channelRef.current?.postMessage({
       type: "STATE",
@@ -131,6 +151,8 @@ export function TimerWidget({ active }: { active: StudySessionModel | null }) {
       paused,
       elapsed,
       title,
+      startedAt: startedAtRef.current,
+      accumulatedMs: accumulatedMsRef.current,
     } satisfies TimerMessage);
   }, [sessionId, paused, elapsed, title]);
 
