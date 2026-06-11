@@ -96,6 +96,8 @@ export function EventDialog({
         </DialogHeader>
 
         <form action={handleSubmit} className="flex flex-col gap-4">
+          {/* 클라이언트 timezone offset 전달 (서버의 UTC 파싱 보정용) */}
+          <input type="hidden" name="tzOffset" value={String(new Date().getTimezoneOffset())} readOnly />
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="event-title">제목</Label>
             <Input id="event-title" name="title" defaultValue={event?.title} placeholder="일정 제목" required />

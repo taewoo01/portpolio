@@ -6,14 +6,24 @@ import { getUser } from "@/lib/server/auth";
 import { TASK_WORKSPACE_VALUES } from "@/lib/workspace";
 import type { TaskWorkspace } from "@/generated/prisma/client";
 
+// datetime-local / date 문자열을 클라이언트 로컬 시간으로 정확히 UTC 변환
+// tzOffset: getTimezoneOffset() 값 (-540 for KST UTC+9)
+function parseLocalDateTime(value: string, tzOffset: number): Date {
+  // date-only "2024-01-16" → "2024-01-16T00:00" 처리
+  const normalized = value.length === 10 ? `${value}T00:00` : value;
+  // "Z" 붙여 UTC로 파싱 후, tzOffset 적용해 실제 UTC 시각으로 보정
+  return new Date(new Date(`${normalized}Z`).getTime() + tzOffset * 60000);
+}
+
 function parseEventInput(formData: FormData) {
+  const tzOffset = parseInt(String(formData.get("tzOffset") ?? "0")); // e.g. -540 for KST
   const title = String(formData.get("title") ?? "").trim() || "제목 없음";
   const description = String(formData.get("description") ?? "").trim() || null;
   const workspace = formData.get("workspace") as TaskWorkspace;
   const allDay = formData.get("allDay") === "on";
-  const startAt = new Date(String(formData.get("startAt") ?? ""));
+  const startAt = parseLocalDateTime(String(formData.get("startAt") ?? ""), tzOffset);
   const endAtRaw = String(formData.get("endAt") ?? "").trim();
-  const endAt = endAtRaw ? new Date(endAtRaw) : null;
+  const endAt = endAtRaw ? parseLocalDateTime(endAtRaw, tzOffset) : null;
 
   return { title, description, workspace, allDay, startAt, endAt };
 }
