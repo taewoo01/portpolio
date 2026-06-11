@@ -1,7 +1,7 @@
 "use client";
 
-import type { RefObject } from "react";
-import { Bold, Code, Heading1, Heading2, Heading3, List, Pilcrow, Quote } from "lucide-react";
+import { useRef, type RefObject } from "react";
+import { Bold, Code, Heading1, Heading2, Heading3, ImagePlus, List, Pilcrow, Quote } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 type Selection = { content: string; start: number; end: number };
@@ -125,11 +125,15 @@ export function MarkdownToolbar({
   textareaRef,
   content,
   onChange,
+  onImageUpload,
 }: {
   textareaRef: RefObject<HTMLTextAreaElement | null>;
   content: string;
   onChange: (next: string) => void;
+  onImageUpload?: (file: File) => Promise<void>;
 }) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   function handleClick(button: ToolbarButton) {
     const textarea = textareaRef.current;
     if (!textarea) return;
@@ -142,6 +146,13 @@ export function MarkdownToolbar({
       textarea.focus();
       textarea.setSelectionRange(result.start, result.end);
     });
+  }
+
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !onImageUpload) return;
+    await onImageUpload(file);
+    e.target.value = "";
   }
 
   return (
@@ -160,6 +171,28 @@ export function MarkdownToolbar({
           <span className="hidden sm:inline">{button.label}</span>
         </Button>
       ))}
+      {onImageUpload && (
+        <>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleFileChange}
+          />
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            title="이미지 업로드"
+            aria-label="이미지 업로드"
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <ImagePlus className="size-4" />
+            <span className="hidden sm:inline">이미지</span>
+          </Button>
+        </>
+      )}
     </div>
   );
 }
