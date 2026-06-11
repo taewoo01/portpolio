@@ -6,6 +6,7 @@ import { PageTransition } from "@/components/layout/page-transition";
 import { ThemeProvider } from "@/components/layout/theme-provider";
 import { SearchProvider } from "@/components/search/search-provider";
 import { FloatingTimerProvider } from "@/lib/floating-timer-context";
+import { TimerProvider } from "@/lib/timer-store";
 import { FloatingTimer } from "@/components/timer/floating-timer";
 import { getUser } from "@/lib/server/auth";
 import "./globals.css";
@@ -72,6 +73,7 @@ export default async function RootLayout({
       <body className="min-h-full flex flex-col">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <SearchProvider>
+            <TimerProvider>
             <FloatingTimerProvider>
               <Navbar user={user} />
               <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-8 pb-24 md:pb-8">
@@ -79,6 +81,7 @@ export default async function RootLayout({
               </main>
               <FloatingTimer />
             </FloatingTimerProvider>
+            </TimerProvider>
           </SearchProvider>
         </ThemeProvider>
       </body>
