@@ -6,19 +6,14 @@ import { getUser } from "@/lib/server/auth";
 import { isOwner } from "@/lib/auth";
 import { ensureUniqueSlug } from "@/lib/blog";
 import { slugify } from "@/lib/slug";
-import type { Workspace } from "@/generated/prisma/client";
-
-const VALID_WORKSPACES: Workspace[] = ["dev", "study"];
 
 export async function publishDocumentAction(
-  workspace: Workspace,
   documentId: string,
   formData: FormData
 ): Promise<{ error: string } | undefined> {
-  if (!VALID_WORKSPACES.includes(workspace)) return { error: "잘못된 입력입니다." };
   try {
     const currentUser = await getUser();
-    const document = await prisma.document.findFirst({ where: { id: documentId, workspace } });
+    const document = await prisma.document.findUnique({ where: { id: documentId } });
     if (!document) return { error: "문서를 찾을 수 없습니다." };
     if (!isOwner(currentUser, document.createdBy ?? null)) return { error: "권한이 없습니다." };
 
@@ -30,7 +25,7 @@ export async function publishDocumentAction(
     const slug = await ensureUniqueSlug(slugify(slugInput || title), existing?.id);
 
     const data = {
-      workspace,
+      workspaceCategoryId: document.workspaceCategoryId,
       title,
       slug,
       content: document.content,
@@ -46,7 +41,7 @@ export async function publishDocumentAction(
 
     revalidatePath("/blog");
     revalidatePath(`/blog/${post.slug}`);
-    revalidatePath(`/${workspace}/${documentId}`);
+    revalidatePath(`/wiki/${documentId}`);
   } catch (e) {
     console.error(e);
     return { error: "블로그 발행에 실패했습니다." };
@@ -71,7 +66,7 @@ export async function unpublishPostAction(
 
     revalidatePath("/blog");
     revalidatePath(`/blog/${updated.slug}`);
-    if (updated.documentId) revalidatePath(`/${updated.workspace}/${updated.documentId}`);
+    if (updated.documentId) revalidatePath(`/wiki/${updated.documentId}`);
   } catch (e) {
     console.error(e);
     return { error: "블로그 비공개 처리에 실패했습니다." };
@@ -93,7 +88,7 @@ export async function deleteBlogPostAction(
 
     revalidatePath("/blog");
     revalidatePath(`/blog/${deleted.slug}`);
-    if (deleted.documentId) revalidatePath(`/${deleted.workspace}/${deleted.documentId}`);
+    if (deleted.documentId) revalidatePath(`/wiki/${deleted.documentId}`);
   } catch (e) {
     console.error(e);
     return { error: "블로그 글 삭제에 실패했습니다." };

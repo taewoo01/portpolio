@@ -1,26 +1,31 @@
-import type { DocumentStatus, Workspace } from "@/generated/prisma/client";
+import type { DocumentStatus } from "@/generated/prisma/client";
 
-export const WORKSPACE_LABEL: Record<Workspace, string> = {
-  dev: "개발",
-  study: "공부",
+export type WorkspaceCategory = {
+  id: string;
+  name: string;
+  color: string;
 };
 
-export const WORKSPACE_BADGE_CLASS: Record<Workspace, string> = {
-  dev: "bg-blue-500/15 text-blue-700 dark:text-blue-400",
-  study: "bg-purple-500/15 text-purple-700 dark:text-purple-400",
-};
+export function workspaceBadgeStyle(color: string) {
+  return {
+    backgroundColor: `${color}22`,
+    color,
+  };
+}
 
 export type WikiDocSummary = {
   id: string;
   title: string;
   status: DocumentStatus;
   createdBy: string | null;
+  workspaceCategory: WorkspaceCategory;
 };
 
 export type FolderTreeNode = {
   id: string;
   name: string;
   createdBy: string | null;
+  workspaceCategory: WorkspaceCategory;
   children: FolderTreeNode[];
   documents: WikiDocSummary[];
 };
@@ -49,8 +54,8 @@ export const STATUS_BADGE_CLASS: Record<DocumentStatus, string> = {
 };
 
 export function buildFolderTree(
-  folders: { id: string; name: string; parentId: string | null; createdBy: string | null }[],
-  documents: { id: string; title: string; folderId: string | null; status: DocumentStatus; createdBy: string | null }[]
+  folders: { id: string; name: string; parentId: string | null; createdBy: string | null; workspaceCategory: WorkspaceCategory }[],
+  documents: { id: string; title: string; folderId: string | null; status: DocumentStatus; createdBy: string | null; workspaceCategory: WorkspaceCategory }[]
 ): FolderTree {
   const nodeById = new Map<string, FolderTreeNode>();
   for (const folder of folders) {
@@ -58,6 +63,7 @@ export function buildFolderTree(
       id: folder.id,
       name: folder.name,
       createdBy: folder.createdBy,
+      workspaceCategory: folder.workspaceCategory,
       children: [],
       documents: [],
     });
@@ -77,7 +83,13 @@ export function buildFolderTree(
   const rootDocuments: WikiDocSummary[] = [];
   for (const doc of documents) {
     const folder = doc.folderId ? nodeById.get(doc.folderId) : undefined;
-    const summary: WikiDocSummary = { id: doc.id, title: doc.title, status: doc.status, createdBy: doc.createdBy };
+    const summary: WikiDocSummary = {
+      id: doc.id,
+      title: doc.title,
+      status: doc.status,
+      createdBy: doc.createdBy,
+      workspaceCategory: doc.workspaceCategory,
+    };
     if (folder) {
       folder.documents.push(summary);
     } else {

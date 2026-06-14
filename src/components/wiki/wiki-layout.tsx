@@ -5,33 +5,33 @@ import { motion, AnimatePresence } from "framer-motion";
 import { PanelLeft } from "lucide-react";
 import { FolderSidebar } from "./folder-sidebar";
 import { WikiActionsProvider } from "./wiki-actions-provider";
-import type { FolderTree } from "@/lib/wiki";
+import type { FolderTree, WorkspaceCategory } from "@/lib/wiki";
 import type { User } from "@/lib/auth";
 import type { ReactNode } from "react";
 
-export function WikiShell({
+export function WikiLayout({
   tree,
   currentUser,
-  basePath,
+  categories,
   children,
 }: {
   tree: FolderTree;
   currentUser: User | null;
-  basePath: string;
+  categories: WorkspaceCategory[];
   children: ReactNode;
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
 
   return (
-    <WikiActionsProvider categories={[]} basePath={basePath}>
+    <WikiActionsProvider categories={categories} basePath="/wiki">
       <div className="flex gap-6">
         <div className="hidden md:block">
           <FolderSidebar
-            categories={[]}
+            categories={categories}
             tree={tree}
             currentUser={currentUser}
-            basePath={basePath}
+            basePath="/wiki"
             selectedCategoryId={selectedCategoryId}
             onCategorySelect={setSelectedCategoryId}
           />
@@ -57,10 +57,10 @@ export function WikiShell({
               >
                 <div className="p-4 pt-16">
                   <FolderSidebar
-                    categories={[]}
+                    categories={categories}
                     tree={tree}
                     currentUser={currentUser}
-                    basePath={basePath}
+                    basePath="/wiki"
                     selectedCategoryId={selectedCategoryId}
                     onCategorySelect={setSelectedCategoryId}
                     onNavigate={() => setSidebarOpen(false)}

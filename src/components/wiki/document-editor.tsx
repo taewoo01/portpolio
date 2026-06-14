@@ -11,7 +11,7 @@ import { MarkdownPreview } from "./markdown-preview";
 import { PublishBlogDialog } from "./publish-blog-dialog";
 import { isOwner } from "@/lib/auth";
 import type { DocumentModel, BlogPostModel } from "@/generated/prisma/models";
-import type { DocumentStatus, Workspace } from "@/generated/prisma/client";
+import type { DocumentStatus } from "@/generated/prisma/client";
 import type { User } from "@/lib/auth";
 
 function parseGitHubUrl(url: string): { owner: string; repo: string } | null {
@@ -80,12 +80,10 @@ function GitHubImport({ content, onImport }: { content: string; onImport: (md: s
 }
 
 export function DocumentEditor({
-  workspace,
   document,
   blogPost,
   currentUser,
 }: {
-  workspace: Workspace;
   document: DocumentModel;
   blogPost: BlogPostModel | null;
   currentUser: User | null;
@@ -102,7 +100,7 @@ export function DocumentEditor({
 
   function handleSubmit(formData: FormData) {
     startSave(async () => {
-      const result = await updateDocumentAction(workspace, document.id, formData);
+      const result = await updateDocumentAction(document.workspaceCategoryId, document.id, formData);
       if (result?.error) { console.error(result.error); return; }
       router.refresh();
       if (status === "done") setIsEditing(false);
@@ -112,9 +110,9 @@ export function DocumentEditor({
   function handleDelete() {
     if (!window.confirm(`"${document.title}" 문서를 삭제할까요? 되돌릴 수 없습니다.`)) return;
     startDelete(async () => {
-      const result = await deleteDocumentAction(workspace, document.id);
+      const result = await deleteDocumentAction(document.workspaceCategoryId, document.id);
       if (result?.error) { console.error(result.error); return; }
-      router.push(`/${workspace}`);
+      router.push("/wiki");
       router.refresh();
     });
   }
@@ -129,7 +127,6 @@ export function DocumentEditor({
     <PublishBlogDialog
       open={isPublishDialogOpen}
       onOpenChange={setPublishDialogOpen}
-      workspace={workspace}
       documentId={document.id}
       documentTitle={document.title}
       post={blogPost}

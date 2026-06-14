@@ -1,10 +1,17 @@
 import Link from "next/link";
 import { StatusBadge } from "@/components/wiki/document-meta";
-import { cn } from "@/lib/utils";
-import { WORKSPACE_BADGE_CLASS, WORKSPACE_LABEL } from "@/lib/wiki";
-import type { DocumentModel } from "@/generated/prisma/models";
+import { workspaceBadgeStyle } from "@/lib/wiki";
+import type { DocumentStatus } from "@/generated/prisma/client";
 
-export function InProgressDocuments({ documents }: { documents: DocumentModel[] }) {
+type Doc = {
+  id: string;
+  title: string;
+  status: DocumentStatus;
+  updatedAt: Date;
+  workspaceCategory: { id: string; name: string; color: string };
+};
+
+export function InProgressDocuments({ documents }: { documents: Doc[] }) {
   return (
     <section className="space-y-3">
       <h2 className="text-lg font-medium">진행 중</h2>
@@ -16,16 +23,14 @@ export function InProgressDocuments({ documents }: { documents: DocumentModel[] 
           {documents.map((doc) => (
             <li key={doc.id}>
               <Link
-                href={`/${doc.workspace}/${doc.id}`}
+                href={`/wiki/${doc.id}`}
                 className="flex items-center gap-2 rounded-md px-2 py-2 text-sm transition-colors hover:bg-accent"
               >
                 <span
-                  className={cn(
-                    "inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-xs font-medium",
-                    WORKSPACE_BADGE_CLASS[doc.workspace]
-                  )}
+                  className="inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-xs font-medium"
+                  style={workspaceBadgeStyle(doc.workspaceCategory.color)}
                 >
-                  {WORKSPACE_LABEL[doc.workspace]}
+                  {doc.workspaceCategory.name}
                 </span>
                 <StatusBadge status={doc.status} />
                 <span className="truncate font-medium">{doc.title}</span>

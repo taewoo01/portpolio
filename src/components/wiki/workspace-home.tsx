@@ -1,15 +1,14 @@
 import { prisma } from "@/lib/db";
 import { EmptyWikiState } from "./empty-wiki-state";
-import type { Workspace } from "@/generated/prisma/client";
 
-export async function WorkspaceHome({ workspace }: { workspace: Workspace }) {
+export async function WorkspaceHome() {
   const [folderCount, documentCount] = await Promise.all([
-    prisma.folder.count({ where: { workspace } }),
-    prisma.document.count({ where: { workspace } }),
+    prisma.folder.count(),
+    prisma.document.count(),
   ]);
 
   if (folderCount === 0 && documentCount === 0) {
-    return <EmptyWikiState workspace={workspace} />;
+    return <EmptyWikiState />;
   }
 
   return (

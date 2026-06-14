@@ -45,6 +45,7 @@ export function EventDialog({
   currentUser: User | null;
 }) {
   const [allDay, setAllDay] = useState(event?.allDay ?? false);
+  const [recurrence, setRecurrence] = useState<string | null>(event?.recurrence ?? null);
   const [workspace, setWorkspace] = useState<TaskWorkspace>(event?.workspace ?? "dev");
   const [isSaving, startSave] = useTransition();
   const [isDeleting, startDelete] = useTransition();
@@ -52,6 +53,7 @@ export function EventDialog({
   useEffect(() => {
     if (!open) return;
     setAllDay(event?.allDay ?? false);
+    setRecurrence(event?.recurrence ?? null);
     setWorkspace(event?.workspace ?? "dev");
   }, [event, open]);
 
@@ -114,14 +116,25 @@ export function EventDialog({
             />
           </div>
 
-          <div className="flex items-center gap-2">
-            <Checkbox
-              id="event-allday"
-              checked={allDay}
-              onCheckedChange={(checked) => setAllDay(checked === true)}
-            />
-            <input type="hidden" name="allDay" value={allDay ? "on" : ""} readOnly />
-            <Label htmlFor="event-allday">하루 종일</Label>
+          <div className="flex gap-6">
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="event-allday"
+                checked={allDay}
+                onCheckedChange={(checked) => setAllDay(checked === true)}
+              />
+              <input type="hidden" name="allDay" value={allDay ? "on" : ""} readOnly />
+              <Label htmlFor="event-allday">하루 종일</Label>
+            </div>
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="event-recurrence"
+                checked={recurrence === "weekly"}
+                onCheckedChange={(checked) => setRecurrence(checked === true ? "weekly" : null)}
+              />
+              <input type="hidden" name="recurrence" value={recurrence ?? ""} readOnly />
+              <Label htmlFor="event-recurrence">매주 반복</Label>
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">

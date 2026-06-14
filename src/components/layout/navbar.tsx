@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Search, Home, Code2, BookOpen, CalendarDays, Timer } from "lucide-react";
+import { Search, Home, BookOpen, CalendarDays, Timer } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useOpenSearchPalette } from "@/components/search/search-provider";
@@ -12,8 +12,7 @@ import type { User } from "@/lib/auth";
 
 const NAV_ITEMS = [
   { href: "/", label: "홈" },
-  { href: "/dev", label: "개발" },
-  { href: "/study", label: "공부" },
+  { href: "/wiki", label: "위키" },
   { href: "/calendar", label: "일정" },
   { href: "/blog", label: "블로그" },
   { href: "/timer", label: "타이머" },
@@ -22,8 +21,7 @@ const NAV_ITEMS = [
 
 const BOTTOM_NAV_ITEMS = [
   { href: "/", label: "홈", icon: Home },
-  { href: "/dev", label: "개발", icon: Code2 },
-  { href: "/study", label: "공부", icon: BookOpen },
+  { href: "/wiki", label: "위키", icon: BookOpen },
   { href: "/calendar", label: "일정", icon: CalendarDays },
   { href: "/timer", label: "타이머", icon: Timer },
 ];

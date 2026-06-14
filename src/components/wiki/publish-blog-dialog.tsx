@@ -16,20 +16,17 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { deleteBlogPostAction, publishDocumentAction, unpublishPostAction } from "@/lib/actions/blog";
 import { slugify } from "@/lib/slug";
-import type { Workspace } from "@/generated/prisma/client";
 import type { BlogPostModel } from "@/generated/prisma/models";
 
 export function PublishBlogDialog({
   open,
   onOpenChange,
-  workspace,
   documentId,
   documentTitle,
   post,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  workspace: Workspace;
   documentId: string;
   documentTitle: string;
   post: BlogPostModel | null;
@@ -54,7 +51,7 @@ export function PublishBlogDialog({
     if (!slugTouched) setSlug(slugify(value));
   }
 
-  const publishAction = publishDocumentAction.bind(null, workspace, documentId);
+  const publishAction = publishDocumentAction.bind(null, documentId);
 
   function handleSubmit(formData: FormData) {
     startPublish(async () => {

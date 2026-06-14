@@ -10,11 +10,6 @@ datasource db {
   provider = "postgresql"
 }
 
-enum Workspace {
-  dev
-  study
-}
-
 enum TaskWorkspace {
   dev
   study
@@ -31,35 +26,50 @@ enum DocumentStatus {
   review
 }
 
-model Folder {
-  id        String    @id @default(cuid())
-  parentId  String?   @map("parent_id")
-  parent    Folder?   @relation("FolderToFolder", fields: [parentId], references: [id], onDelete: Cascade)
-  children  Folder[]  @relation("FolderToFolder")
-  workspace Workspace
+model WorkspaceCategory {
+  id        String     @id @default(cuid())
   name      String
-  createdBy String?   @map("created_by")
-  sortOrder Int       @default(0) @map("sort_order")
+  color     String     @default("#3182F6")
+  sortOrder Int        @default(0) @map("sort_order")
+  createdAt DateTime   @default(now()) @map("created_at")
+  folders   Folder[]
   documents Document[]
-  createdAt DateTime  @default(now()) @map("created_at")
-  updatedAt DateTime  @updatedAt @map("updated_at")
+  blogPosts BlogPost[]
+
+  @@map("workspace_categories")
+}
+
+model Folder {
+  id                  String            @id @default(cuid())
+  parentId            String?           @map("parent_id")
+  parent              Folder?           @relation("FolderToFolder", fields: [parentId], references: [id], onDelete: Cascade)
+  children            Folder[]          @relation("FolderToFolder")
+  workspaceCategoryId String            @map("workspace_category_id")
+  workspaceCategory   WorkspaceCategory @relation(fields: [workspaceCategoryId], references: [id])
+  name                String
+  createdBy           String?           @map("created_by")
+  sortOrder           Int               @default(0) @map("sort_order")
+  documents           Document[]
+  createdAt           DateTime          @default(now()) @map("created_at")
+  updatedAt           DateTime          @updatedAt @map("updated_at")
 
   @@map("folders")
 }
 
 model Document {
-  id        String         @id @default(cuid())
-  folderId  String?        @map("folder_id")
-  folder    Folder?        @relation(fields: [folderId], references: [id], onDelete: SetNull)
-  workspace Workspace
-  title     String
-  content   String         @default("")
-  status    DocumentStatus @default(draft)
-  tags      String[]       @default([])
-  createdBy String?        @map("created_by")
-  blogPosts BlogPost[]
-  createdAt DateTime       @default(now()) @map("created_at")
-  updatedAt DateTime       @updatedAt @map("updated_at")
+  id                  String            @id @default(cuid())
+  folderId            String?           @map("folder_id")
+  folder              Folder?           @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  workspaceCategoryId String            @map("workspace_category_id")
+  workspaceCategory   WorkspaceCategory @relation(fields: [workspaceCategoryId], references: [id])
+  title               String
+  content             String            @default("")
+  status              DocumentStatus    @default(draft)
+  tags                String[]          @default([])
+  createdBy           String?           @map("created_by")
+  blogPosts           BlogPost[]
+  createdAt           DateTime          @default(now()) @map("created_at")
+  updatedAt           DateTime          @updatedAt @map("updated_at")
 
   @@map("documents")
 }
@@ -72,6 +82,7 @@ model Event {
   endAt       DateTime?     @map("end_at")
   workspace   TaskWorkspace
   allDay      Boolean       @default(false) @map("all_day")
+  recurrence  String?       @map("recurrence")
   createdBy   String?       @map("created_by")
   todos       Todo[]
   createdAt   DateTime      @default(now()) @map("created_at")
@@ -122,19 +133,20 @@ model AboutProfile {
 }
 
 model BlogPost {
-  id          String    @id @default(cuid())
-  documentId  String?   @map("document_id")
-  document    Document? @relation(fields: [documentId], references: [id], onDelete: SetNull)
-  workspace   Workspace
-  title       String
-  slug        String    @unique
-  content     String
-  excerpt     String?
-  createdBy   String?   @map("created_by")
-  published   Boolean   @default(false)
-  publishedAt DateTime? @map("published_at")
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
+  id                  String            @id @default(cuid())
+  documentId          String?           @map("document_id")
+  document            Document?         @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  workspaceCategoryId String            @map("workspace_category_id")
+  workspaceCategory   WorkspaceCategory @relation(fields: [workspaceCategoryId], references: [id])
+  title               String
+  slug                String            @unique
+  content             String
+  excerpt             String?
+  createdBy           String?           @map("created_by")
+  published           Boolean           @default(false)
+  publishedAt         DateTime?         @map("published_at")
+  createdAt           DateTime          @default(now()) @map("created_at")
+  updatedAt           DateTime          @updatedAt @map("updated_at")
 
   @@map("blog_posts")
 }

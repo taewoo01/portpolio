@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { Calendar, dateFnsLocalizer, type SlotInfo } from "react-big-calendar";
-import { format, getDay, parse, startOfWeek } from "date-fns";
+import { addWeeks, endOfMonth, format, getDay, parse, startOfMonth, startOfWeek } from "date-fns";
 import { ko } from "date-fns/locale";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import { Button } from "@/components/ui/button";
@@ -62,12 +62,60 @@ const FILTER_LABELS: Record<FilterUser, string> = {
   yujin: USER_LABEL.yujin,
 };
 
-export function CalendarView({ events, currentUser }: { events: EventModel[]; currentUser: User | null }) {
+function expandRecurringEvents(events: EventModel[], rangeStart: Date, rangeEnd: Date): CalendarEvent[] {
+  const result: CalendarEvent[] = [];
+
+  for (const event of events) {
+    const duration = (event.endAt ?? event.startAt).getTime() - event.startAt.getTime();
+
+    if (event.recurrence === "weekly") {
+      let cursor = new Date(event.startAt);
+      while (cursor <= rangeEnd) {
+        if (cursor >= rangeStart) {
+          const occurrenceEnd = new Date(cursor.getTime() + duration);
+          result.push({
+            id: `${event.id}_${cursor.getTime()}`,
+            title: event.title,
+            start: new Date(cursor),
+            end: event.allDay ? new Date(occurrenceEnd.getTime() + 86400000) : occurrenceEnd,
+            allDay: event.allDay,
+            resource: event,
+          });
+        }
+        cursor = addWeeks(cursor, 1);
+      }
+    } else {
+      result.push({
+        id: event.id,
+        title: event.title,
+        start: event.startAt,
+        end: event.allDay
+          ? new Date((event.endAt ?? event.startAt).getTime() + 86400000)
+          : (event.endAt ?? event.startAt),
+        allDay: event.allDay,
+        resource: event,
+      });
+    }
+  }
+
+  return result;
+}
+
+export function CalendarView({
+  events,
+  currentUser,
+  onDateChange,
+}: {
+  events: EventModel[];
+  currentUser: User | null;
+  onDateChange?: (date: Date, monthEvents: EventModel[]) => void;
+}) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<EventModel | null>(null);
   const [slotDate, setSlotDate] = useState<Date | null>(null);
   const [filter, setFilter] = useState<FilterUser>("all");
   const [isMobile, setIsMobile] = useState(false);
+  const [currentDate, setCurrentDate] = useState(new Date());
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768);
@@ -81,20 +129,37 @@ export function CalendarView({ events, currentUser }: { events: EventModel[]; cu
     [events, filter]
   );
 
-  const calendarEvents = useMemo<CalendarEvent[]>(
-    () =>
-      filteredEvents.map((event) => ({
-        id: event.id,
-        title: event.title,
-        start: event.startAt,
-        end: event.allDay
-          ? new Date((event.endAt ?? event.startAt).getTime() + 86400000)
-          : (event.endAt ?? event.startAt),
-        allDay: event.allDay,
-        resource: event,
-      })),
-    [filteredEvents]
-  );
+  const calendarEvents = useMemo<CalendarEvent[]>(() => {
+    const rangeStart = startOfMonth(currentDate);
+    rangeStart.setMonth(rangeStart.getMonth() - 3);
+    const rangeEnd = endOfMonth(currentDate);
+    rangeEnd.setMonth(rangeEnd.getMonth() + 3);
+    return expandRecurringEvents(filteredEvents, rangeStart, rangeEnd);
+  }, [filteredEvents, currentDate]);
+
+  const monthEvents = useMemo(() => {
+    const ms = startOfMonth(currentDate);
+    const me = endOfMonth(currentDate);
+    return filteredEvents
+      .flatMap((event) => {
+        if (event.recurrence === "weekly") {
+          const occurrences: EventModel[] = [];
+          let cursor = new Date(event.startAt);
+          while (cursor <= me) {
+            if (cursor >= ms) occurrences.push({ ...event, startAt: new Date(cursor) });
+            cursor = addWeeks(cursor, 1);
+          }
+          return occurrences;
+        }
+        const s = event.startAt;
+        return s >= ms && s <= me ? [event] : [];
+      })
+      .sort((a, b) => a.startAt.getTime() - b.startAt.getTime());
+  }, [filteredEvents, currentDate]);
+
+  useEffect(() => {
+    onDateChange?.(currentDate, monthEvents);
+  }, [currentDate, monthEvents]);
 
   function openCreateDialog(date: Date) {
     setSelectedEvent(null);
@@ -144,6 +209,8 @@ export function CalendarView({ events, currentUser }: { events: EventModel[]; cu
           localizer={localizer}
           culture="ko"
           events={calendarEvents}
+          date={currentDate}
+          onNavigate={setCurrentDate}
           startAccessor="start"
           endAccessor="end"
           views={isMobile ? ["month", "agenda"] : ["month", "week"]}
@@ -162,6 +229,9 @@ export function CalendarView({ events, currentUser }: { events: EventModel[]; cu
             event: ({ event }) => (
               <div className="flex items-center gap-1 overflow-hidden">
                 <span className="truncate">{event.title}</span>
+                {event.resource.recurrence === "weekly" && (
+                  <span className="shrink-0 opacity-60 text-[10px]">↻</span>
+                )}
                 {event.resource.createdBy && (
                   <span className="shrink-0 opacity-70">
                     {event.resource.createdBy === "taewoo" ? "T" : "Y"}

@@ -21,11 +21,12 @@ function parseEventInput(formData: FormData) {
   const description = String(formData.get("description") ?? "").trim() || null;
   const workspace = formData.get("workspace") as TaskWorkspace;
   const allDay = formData.get("allDay") === "on";
+  const recurrence = formData.get("recurrence") === "weekly" ? "weekly" : null;
   const startAt = parseLocalDateTime(String(formData.get("startAt") ?? ""), tzOffset);
   const endAtRaw = String(formData.get("endAt") ?? "").trim();
   const endAt = endAtRaw ? parseLocalDateTime(endAtRaw, tzOffset) : null;
 
-  return { title, description, workspace, allDay, startAt, endAt };
+  return { title, description, workspace, allDay, recurrence, startAt, endAt };
 }
 
 export async function createEventAction(

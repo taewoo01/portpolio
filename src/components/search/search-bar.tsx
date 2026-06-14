@@ -5,13 +5,16 @@ import { usePathname, useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { SearchFilters } from "./search-filters";
 import type { WorkspaceFilter } from "@/lib/actions/search";
+import type { WorkspaceCategory } from "@/lib/wiki";
 
 export function SearchBar({
   defaultQuery,
   defaultWorkspace,
+  categories,
 }: {
   defaultQuery: string;
   defaultWorkspace: WorkspaceFilter;
+  categories: WorkspaceCategory[];
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -38,7 +41,7 @@ export function SearchBar({
         placeholder="제목이나 본문으로 검색"
         className="h-11 text-base"
       />
-      <SearchFilters value={workspace} onChange={setWorkspace} />
+      <SearchFilters categories={categories} value={workspace} onChange={setWorkspace} />
     </div>
   );
 }

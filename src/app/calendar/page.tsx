@@ -1,8 +1,7 @@
 import { addMonths, subMonths } from "date-fns";
 import { getAllTodos, getEventsInRange } from "@/lib/calendar";
 import { getUser } from "@/lib/server/auth";
-import { CalendarView } from "@/components/calendar/calendar-view";
-import { TodoList } from "@/components/calendar/todo-list";
+import { CalendarSection } from "@/components/calendar/calendar-section";
 
 export default async function CalendarPage() {
   const now = new Date();
@@ -19,10 +18,7 @@ export default async function CalendarPage() {
         <p className="text-sm text-muted-foreground">월간 캘린더와 할 일을 관리합니다.</p>
       </div>
 
-      <div className="grid gap-8 lg:grid-cols-[1fr_320px]">
-        <CalendarView events={events} currentUser={currentUser} />
-        <TodoList todos={todos} currentUser={currentUser} />
-      </div>
+      <CalendarSection events={events} todos={todos} currentUser={currentUser} />
     </div>
   );
 }

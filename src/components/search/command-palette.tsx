@@ -15,13 +15,16 @@ import {
   type SearchResult,
   type WorkspaceFilter,
 } from "@/lib/actions/search";
+import type { WorkspaceCategory } from "@/lib/wiki";
 
 export function CommandPalette({
   open,
   onOpenChange,
+  categories,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  categories: WorkspaceCategory[];
 }) {
   const [query, setQuery] = useState("");
   const [workspace, setWorkspace] = useState<WorkspaceFilter>("all");
@@ -59,7 +62,7 @@ export function CommandPalette({
       >
         <DialogTitle className="sr-only">문서 검색</DialogTitle>
         <DialogDescription className="sr-only">
-          제목과 본문으로 개발·공부 문서를 검색합니다
+          위키 문서를 검색합니다
         </DialogDescription>
 
         <div className="flex flex-col gap-3 p-4">
@@ -70,7 +73,7 @@ export function CommandPalette({
             placeholder="제목이나 본문으로 검색…"
             className="h-11 text-base"
           />
-          <SearchFilters value={workspace} onChange={setWorkspace} />
+          <SearchFilters categories={categories} value={workspace} onChange={setWorkspace} />
         </div>
 
         <div className="max-h-[60vh] overflow-y-auto border-t px-2 pb-2">

@@ -29,7 +29,12 @@ export async function getTodayActivity() {
     prisma.document.findMany({
       where: { updatedAt: { gte: start, lte: end } },
       orderBy: { updatedAt: "desc" },
-      select: { id: true, title: true, workspace: true, updatedAt: true },
+      select: {
+        id: true,
+        title: true,
+        updatedAt: true,
+        workspaceCategory: { select: { id: true, name: true, color: true } },
+      },
     }),
     prisma.blogPost.findMany({
       where: { published: true, publishedAt: { gte: start, lte: end } },

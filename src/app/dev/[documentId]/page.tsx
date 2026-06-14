@@ -1,7 +1,4 @@
-import { notFound } from "next/navigation";
-import { prisma } from "@/lib/db";
-import { getUser } from "@/lib/server/auth";
-import { DocumentEditor } from "@/components/wiki/document-editor";
+import { redirect } from "next/navigation";
 
 export default async function DevDocumentPage({
   params,
@@ -9,14 +6,5 @@ export default async function DevDocumentPage({
   params: Promise<{ documentId: string }>;
 }) {
   const { documentId } = await params;
-  const [document, currentUser] = await Promise.all([
-    prisma.document.findFirst({ where: { id: documentId, workspace: "dev" } }),
-    getUser(),
-  ]);
-
-  if (!document) notFound();
-
-  const blogPost = await prisma.blogPost.findFirst({ where: { documentId } });
-
-  return <DocumentEditor workspace="dev" document={document} blogPost={blogPost} currentUser={currentUser} />;
+  redirect(`/wiki/${documentId}`);
 }

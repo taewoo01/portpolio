@@ -1,32 +1,39 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { workspaceBadgeStyle } from "@/lib/wiki";
 import type { WorkspaceFilter } from "@/lib/actions/search";
-
-const WORKSPACE_FILTERS: { value: WorkspaceFilter; label: string }[] = [
-  { value: "all", label: "전체" },
-  { value: "dev", label: "개발" },
-  { value: "study", label: "공부" },
-];
+import type { WorkspaceCategory } from "@/lib/wiki";
 
 export function SearchFilters({
+  categories,
   value,
   onChange,
 }: {
+  categories: WorkspaceCategory[];
   value: WorkspaceFilter;
   onChange: (value: WorkspaceFilter) => void;
 }) {
   return (
-    <div className="flex gap-1">
-      {WORKSPACE_FILTERS.map((item) => (
+    <div className="flex flex-wrap gap-1">
+      <Button
+        type="button"
+        size="sm"
+        variant={value === "all" ? "secondary" : "ghost"}
+        onClick={() => onChange("all")}
+      >
+        전체
+      </Button>
+      {categories.map((cat) => (
         <Button
-          key={item.value}
+          key={cat.id}
           type="button"
           size="sm"
-          variant={value === item.value ? "secondary" : "ghost"}
-          onClick={() => onChange(item.value)}
+          variant={value === cat.id ? "secondary" : "ghost"}
+          onClick={() => onChange(cat.id)}
+          style={value === cat.id ? workspaceBadgeStyle(cat.color) : undefined}
         >
-          {item.label}
+          {cat.name}
         </Button>
       ))}
     </div>

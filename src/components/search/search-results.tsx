@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { StatusBadge } from "@/components/wiki/document-meta";
-import { cn } from "@/lib/utils";
-import { WORKSPACE_BADGE_CLASS, WORKSPACE_LABEL } from "@/lib/wiki";
+import { workspaceBadgeStyle } from "@/lib/wiki";
 import type { SearchResult } from "@/lib/actions/search";
 
 export function SearchResults({
@@ -16,18 +15,16 @@ export function SearchResults({
       {results.map((result) => (
         <li key={result.id}>
           <Link
-            href={`/${result.workspace}/${result.id}`}
+            href={`/wiki/${result.id}`}
             onClick={onNavigate}
             className="flex flex-col gap-1.5 rounded-md px-3 py-3 transition-colors hover:bg-accent"
           >
             <div className="flex items-center gap-2">
               <span
-                className={cn(
-                  "inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-xs font-medium",
-                  WORKSPACE_BADGE_CLASS[result.workspace]
-                )}
+                className="inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-xs font-medium"
+                style={workspaceBadgeStyle(result.workspaceCategory.color)}
               >
-                {WORKSPACE_LABEL[result.workspace]}
+                {result.workspaceCategory.name}
               </span>
               <StatusBadge status={result.status} />
               <span className="truncate font-medium">{result.title}</span>

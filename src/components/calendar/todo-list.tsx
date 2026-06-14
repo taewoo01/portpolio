@@ -76,11 +76,8 @@ export function TodoList({ todos, currentUser }: { todos: TodoModel[]; currentUs
         </div>
       </form>
 
-      {todos.length === 0 ? (
-        <p className="text-sm text-muted-foreground">할 일이 없습니다.</p>
-      ) : (
-        <ul className="flex flex-col gap-1">
-          {todos.map((todo) => {
+      <ul className="flex flex-col gap-1">
+        {todos.map((todo) => {
             const canDelete = isOwner(currentUser, todo.createdBy ?? null);
             return (
               <li
@@ -127,8 +124,7 @@ export function TodoList({ todos, currentUser }: { todos: TodoModel[]; currentUs
               </li>
             );
           })}
-        </ul>
-      )}
+      </ul>
     </div>
   );
 }

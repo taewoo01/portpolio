@@ -10,6 +10,37 @@ import type { TimerMessage } from "@/lib/timer-channel";
 const STORAGE_KEY = "portpolio-timer-pos";
 const GIF_SIZE = 80;
 
+const MESSAGES = {
+  start:        ["같이 열심히 해보자! 💪", "집중 모드 ON! 🔥", "화이팅! ✨", "오늘도 파이팅! 🎉"],
+  pause:        ["잠깐 쉬어가~ 😊", "금방 돌아와!", "숨 좀 고르자!", "짧게 쉬고 다시!"],
+  resume:       ["다시 달려보자! 🚀", "잘 쉬었어? 파이팅!", "집중 또 집중! 🎯", "이번엔 더 잘할 수 있어!"],
+  stop:         ["수고했어! 🥰", "오늘도 고생했어~", "훌륭해! 내일도 화이팅!", "잘했어! 😄"],
+  click:        ["뭐 공부할 거야?", "나 여기 있어! 😄", "언제 시작해?", "같이 하자~"],
+  clickRunning: ["잘 하고 있어! 👍", "집중 또 집중! 🔥", "조금만 더!", "멈추지 마! 💪"],
+  clickPaused:  ["빨리 다시 시작해!", "쉬는 시간 끝~?", "조금만 더 힘내!", "거의 다 왔어!"],
+};
+
+function pick(arr: string[]) {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+function SpeechBubble({ message }: { message: string }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.8, y: 6 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.8, y: 6 }}
+      transition={{ type: "spring", stiffness: 400, damping: 28 }}
+      className="flex justify-center pb-2"
+    >
+      <div className="relative rounded-xl bg-white px-3 py-1.5 text-xs font-medium text-zinc-800 shadow-lg max-w-[200px] text-center">
+        {message}
+        <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 size-3 rotate-45 bg-white" />
+      </div>
+    </motion.div>
+  );
+}
+
 function formatDuration(seconds: number) {
   const h = Math.floor(seconds / 3600);
   const m = Math.floor((seconds % 3600) / 60);
@@ -29,17 +60,31 @@ export function FloatingTimer() {
   const [title, setTitle] = useState("");
   const [inputTitle, setInputTitle] = useState("");
 
+  const [bubble, setBubble] = useState<string | null>(null);
+  const bubbleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastClickRef = useRef<number>(0);
+  const prevRunningRef = useRef(false);
+  const prevPausedRef = useRef(false);
+
   const channelRef = useRef<BroadcastChannel | null>(null);
   const imgRef = useRef<HTMLImageElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  // MotionValue로 드래그 위치 관리 — SSR safe (초기값 0, mount 시 조정)
   const motionX = useMotionValue(0);
   const motionY = useMotionValue(0);
 
   const gifActive = running && !paused;
 
-  // 초기 위치 설정 (localStorage 또는 우측 하단 기본값)
+  function showBubble(msg: string, duration = 3000) {
+    if (bubbleTimerRef.current) clearTimeout(bubbleTimerRef.current);
+    setBubble(msg);
+    bubbleTimerRef.current = setTimeout(() => setBubble(null), duration);
+  }
+
+  useEffect(() => () => {
+    if (bubbleTimerRef.current) clearTimeout(bubbleTimerRef.current);
+  }, []);
+
   useEffect(() => {
     const w = window.innerWidth;
     const h = window.innerHeight;
@@ -58,20 +103,17 @@ export function FloatingTimer() {
       }
     } catch { /* ignore */ }
 
-    // 기본값: 우측 하단
     motionX.set(w - 300);
     motionY.set(h - 440);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // 창 크기 변경 대응
   useEffect(() => {
     function handleResize() {
       const w = window.innerWidth;
       const h = window.innerHeight;
       setIsMobile(w < 640);
       setConstraints({ right: w - 280, bottom: h - 60 });
-      // 화면 밖으로 나간 경우 보정
       motionX.set(Math.min(motionX.get(), w - 280));
       motionY.set(Math.min(motionY.get(), h - 60));
     }
@@ -80,7 +122,6 @@ export function FloatingTimer() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // GIF 정지 시 캔버스에 프레임 캡처
   useEffect(() => {
     if (!gifActive && canvasRef.current && imgRef.current) {
       const ctx = canvasRef.current.getContext("2d");
@@ -89,7 +130,6 @@ export function FloatingTimer() {
     }
   }, [gifActive]);
 
-  // BroadcastChannel
   useEffect(() => {
     if (!isOpen) return;
     const channel = new BroadcastChannel(TIMER_CHANNEL_NAME);
@@ -98,6 +138,22 @@ export function FloatingTimer() {
     channel.onmessage = (event: MessageEvent<TimerMessage>) => {
       const msg = event.data;
       if (msg.type === "STATE") {
+        const wasRunning = prevRunningRef.current;
+        const wasPaused = prevPausedRef.current;
+
+        if (!wasRunning && !wasPaused && msg.running && !msg.paused) {
+          showBubble(pick(MESSAGES.start));
+        } else if (wasRunning && !wasPaused && msg.paused) {
+          showBubble(pick(MESSAGES.pause));
+        } else if (wasPaused && msg.running && !msg.paused) {
+          showBubble(pick(MESSAGES.resume));
+        } else if ((wasRunning || wasPaused) && !msg.running && !msg.paused) {
+          showBubble(pick(MESSAGES.stop), 4000);
+        }
+
+        prevRunningRef.current = msg.running;
+        prevPausedRef.current = msg.paused;
+
         setRunning(msg.running);
         setPaused(msg.paused);
         setElapsed(msg.elapsed);
@@ -112,7 +168,6 @@ export function FloatingTimer() {
     };
   }, [isOpen]);
 
-  // Esc 닫기
   useEffect(() => {
     if (!isOpen) return;
     const handler = (e: KeyboardEvent) => { if (e.key === "Escape") close(); };
@@ -128,6 +183,16 @@ export function FloatingTimer() {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify({ x: motionX.get(), y: motionY.get() }));
     } catch { /* ignore */ }
+  }
+
+  function handleGifClick() {
+    const now = Date.now();
+    if (now - lastClickRef.current < 2000) return;
+    lastClickRef.current = now;
+
+    if (running) showBubble(pick(MESSAGES.clickRunning));
+    else if (paused) showBubble(pick(MESSAGES.clickPaused));
+    else showBubble(pick(MESSAGES.click));
   }
 
   return (
@@ -182,8 +247,17 @@ export function FloatingTimer() {
                 className="overflow-hidden"
               >
                 <div className="flex flex-col items-center gap-3 px-4 pb-5">
+                  {/* 말풍선 */}
+                  <AnimatePresence>
+                    {bubble && <SpeechBubble key={bubble} message={bubble} />}
+                  </AnimatePresence>
+
                   {/* 도라에몽 GIF */}
-                  <div className="relative" style={{ width: GIF_SIZE, height: GIF_SIZE }}>
+                  <div
+                    className="relative cursor-pointer"
+                    style={{ width: GIF_SIZE, height: GIF_SIZE }}
+                    onClick={handleGifClick}
+                  >
                     <img
                       ref={imgRef}
                       src="/doraemon.gif"

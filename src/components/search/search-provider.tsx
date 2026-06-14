@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { CommandPalette } from "./command-palette";
+import type { WorkspaceCategory } from "@/lib/wiki";
 
 const SearchPaletteContext = createContext<(() => void) | null>(null);
 
@@ -11,7 +12,13 @@ export function useOpenSearchPalette() {
   return open;
 }
 
-export function SearchProvider({ children }: { children: ReactNode }) {
+export function SearchProvider({
+  categories,
+  children,
+}: {
+  categories: WorkspaceCategory[];
+  children: ReactNode;
+}) {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -28,7 +35,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
   return (
     <SearchPaletteContext.Provider value={() => setOpen(true)}>
       {children}
-      <CommandPalette open={open} onOpenChange={setOpen} />
+      <CommandPalette open={open} onOpenChange={setOpen} categories={categories} />
     </SearchPaletteContext.Provider>
   );
 }

@@ -1,5 +1,5 @@
-import { WorkspaceHome } from "@/components/wiki/workspace-home";
+import { redirect } from "next/navigation";
 
 export default function DevPage() {
-  return <WorkspaceHome workspace="dev" />;
+  redirect("/wiki");
 }

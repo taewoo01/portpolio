@@ -1,14 +1,14 @@
 "use server";
 
 import { prisma } from "@/lib/db";
-import type { DocumentStatus, Workspace } from "@/generated/prisma/client";
+import type { DocumentStatus } from "@/generated/prisma/client";
 
-export type WorkspaceFilter = "all" | Workspace;
+export type WorkspaceFilter = "all" | string; // "all" or workspaceCategoryId
 
 export type SearchResult = {
   id: string;
   title: string;
-  workspace: Workspace;
+  workspaceCategory: { id: string; name: string; color: string };
   status: DocumentStatus;
   tags: string[];
   matchedTags: string[];
@@ -19,7 +19,7 @@ export type SearchResult = {
 const SELECT = {
   id: true,
   title: true,
-  workspace: true,
+  workspaceCategory: { select: { id: true, name: true, color: true } },
   status: true,
   tags: true,
   updatedAt: true,
@@ -28,18 +28,18 @@ const SELECT = {
 
 export async function searchDocumentsAction(
   query: string,
-  workspace: WorkspaceFilter
+  categoryFilter: WorkspaceFilter
 ): Promise<SearchResult[]> {
   const trimmed = query.trim();
   if (!trimmed) return [];
 
   const lowered = trimmed.toLowerCase();
-  const workspaceFilter = workspace !== "all" ? { workspace } : {};
+  const categoryWhere = categoryFilter !== "all" ? { workspaceCategoryId: categoryFilter } : {};
 
   const [textMatches, tagCandidates] = await Promise.all([
     prisma.document.findMany({
       where: {
-        ...workspaceFilter,
+        ...categoryWhere,
         OR: [
           { title: { contains: trimmed, mode: "insensitive" } },
           { content: { contains: trimmed, mode: "insensitive" } },
@@ -50,7 +50,7 @@ export async function searchDocumentsAction(
       take: 30,
     }),
     prisma.document.findMany({
-      where: { ...workspaceFilter, tags: { isEmpty: false } },
+      where: { ...categoryWhere, tags: { isEmpty: false } },
       orderBy: { updatedAt: "desc" },
       select: SELECT,
       take: 100,

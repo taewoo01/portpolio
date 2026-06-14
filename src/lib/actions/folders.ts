@@ -4,20 +4,22 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { getUser } from "@/lib/server/auth";
 import { isOwner } from "@/lib/auth";
-import type { Workspace } from "@/generated/prisma/client";
 
-const VALID_WORKSPACES: Workspace[] = ["dev", "study"];
+async function categoryExists(id: string) {
+  const cat = await prisma.workspaceCategory.findUnique({ where: { id }, select: { id: true } });
+  return !!cat;
+}
 
 export async function createFolderAction(
-  workspace: Workspace,
+  workspaceCategoryId: string,
   name: string,
   parentId: string | null
 ): Promise<{ error: string } | undefined> {
-  if (!VALID_WORKSPACES.includes(workspace)) return { error: "잘못된 입력입니다." };
+  if (!await categoryExists(workspaceCategoryId)) return { error: "잘못된 카테고리입니다." };
   try {
     const createdBy = await getUser();
-    await prisma.folder.create({ data: { workspace, name, parentId, createdBy } });
-    revalidatePath(`/${workspace}`);
+    await prisma.folder.create({ data: { workspaceCategoryId, name, parentId, createdBy } });
+    revalidatePath("/wiki");
   } catch (e) {
     console.error(e);
     return { error: "폴더 생성에 실패했습니다." };
@@ -25,11 +27,10 @@ export async function createFolderAction(
 }
 
 export async function renameFolderAction(
-  workspace: Workspace,
+  workspaceCategoryId: string,
   folderId: string,
   name: string
 ): Promise<{ error: string } | undefined> {
-  if (!VALID_WORKSPACES.includes(workspace)) return { error: "잘못된 입력입니다." };
   try {
     const currentUser = await getUser();
     const existing = await prisma.folder.findFirst({
@@ -37,9 +38,8 @@ export async function renameFolderAction(
       select: { createdBy: true },
     });
     if (existing && !isOwner(currentUser, existing.createdBy ?? null)) return { error: "권한이 없습니다." };
-
-    await prisma.folder.updateMany({ where: { id: folderId, workspace }, data: { name } });
-    revalidatePath(`/${workspace}`);
+    await prisma.folder.update({ where: { id: folderId }, data: { name } });
+    revalidatePath("/wiki");
   } catch (e) {
     console.error(e);
     return { error: "폴더 이름 변경에 실패했습니다." };
@@ -47,10 +47,9 @@ export async function renameFolderAction(
 }
 
 export async function deleteFolderAction(
-  workspace: Workspace,
+  workspaceCategoryId: string,
   folderId: string
 ): Promise<{ error: string } | undefined> {
-  if (!VALID_WORKSPACES.includes(workspace)) return { error: "잘못된 입력입니다." };
   try {
     const currentUser = await getUser();
     const existing = await prisma.folder.findFirst({
@@ -58,9 +57,8 @@ export async function deleteFolderAction(
       select: { createdBy: true },
     });
     if (existing && !isOwner(currentUser, existing.createdBy ?? null)) return { error: "권한이 없습니다." };
-
-    await prisma.folder.deleteMany({ where: { id: folderId, workspace } });
-    revalidatePath(`/${workspace}`);
+    await prisma.folder.delete({ where: { id: folderId } });
+    revalidatePath("/wiki");
   } catch (e) {
     console.error(e);
     return { error: "폴더 삭제에 실패했습니다." };

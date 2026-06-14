@@ -8,6 +8,7 @@ import { SearchProvider } from "@/components/search/search-provider";
 import { FloatingTimerProvider } from "@/lib/floating-timer-context";
 import { TimerProvider } from "@/lib/timer-store";
 import { FloatingTimer } from "@/components/timer/floating-timer";
+import { prisma } from "@/lib/db";
 import { getUser } from "@/lib/server/auth";
 import "./globals.css";
 
@@ -56,7 +57,10 @@ export default async function RootLayout({
     );
   }
 
-  const user = await getUser();
+  const [user, categories] = await Promise.all([
+    getUser(),
+    prisma.workspaceCategory.findMany({ orderBy: { sortOrder: "asc" } }),
+  ]);
 
   return (
     <html
@@ -72,7 +76,7 @@ export default async function RootLayout({
       </head>
       <body className="min-h-full flex flex-col">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          <SearchProvider>
+          <SearchProvider categories={categories}>
             <TimerProvider>
             <FloatingTimerProvider>
               <Navbar user={user} />

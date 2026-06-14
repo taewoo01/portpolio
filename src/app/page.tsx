@@ -22,13 +22,13 @@ export default async function Home() {
     <div className="space-y-10">
       <h1 className="text-2xl font-semibold">홈</h1>
       <StatsCards
-        devDocuments={stats.devDocuments}
-        studyDocuments={stats.studyDocuments}
+        totalDocuments={stats.totalDocuments}
         publishedPosts={stats.publishedPosts}
         pendingTodos={stats.pendingTodos}
+        completedThisMonth={stats.completedThisMonth}
       />
       <TodaySection events={todayEvents} todos={pendingTodos} />
-      <RecentDocuments dev={recentDocuments.dev} study={recentDocuments.study} />
+      <RecentDocuments documents={recentDocuments} />
       <InProgressDocuments documents={inProgressDocuments} />
       <RecentBlogPosts posts={recentBlogPosts} />
     </div>

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { TASK_WORKSPACE_BADGE_CLASS } from "@/lib/workspace";
+import { workspaceBadgeStyle } from "@/lib/wiki";
 import type { StudySessionModel } from "@/generated/prisma/models";
 
 function formatDuration(seconds: number) {
@@ -15,7 +15,12 @@ function formatTime(date: Date) {
   return new Date(date).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
 }
 
-type Document = { id: string; title: string; workspace: "dev" | "study"; updatedAt: Date };
+type Document = {
+  id: string;
+  title: string;
+  updatedAt: Date;
+  workspaceCategory: { id: string; name: string; color: string };
+};
 type BlogPost = { id: string; title: string; slug: string; publishedAt: Date | null };
 
 export function TodayActivity({
@@ -53,10 +58,13 @@ export function TodayActivity({
         <Section title="수정된 문서" empty={documents.length === 0} emptyText="오늘 수정된 문서가 없습니다">
           {documents.map((d) => (
             <div key={d.id} className="flex items-center gap-2 px-4 py-2.5 text-sm">
-              <span className={`shrink-0 rounded px-1.5 py-0.5 text-xs font-medium ${TASK_WORKSPACE_BADGE_CLASS[d.workspace]}`}>
-                {d.workspace === "dev" ? "개발" : "공부"}
+              <span
+                className="shrink-0 rounded-full px-1.5 py-0.5 text-xs font-medium"
+                style={workspaceBadgeStyle(d.workspaceCategory.color)}
+              >
+                {d.workspaceCategory.name}
               </span>
-              <Link href={`/${d.workspace}/${d.id}`} className="truncate hover:underline">
+              <Link href={`/wiki/${d.id}`} className="truncate hover:underline">
                 {d.title}
               </Link>
               <span className="ml-auto shrink-0 text-muted-foreground">{formatTime(d.updatedAt)}</span>

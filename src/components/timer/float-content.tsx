@@ -1,11 +1,43 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
 import { TIMER_CHANNEL_NAME } from "@/lib/timer-channel";
 import type { TimerMessage } from "@/lib/timer-channel";
 
 const GIF_SIZE = 112;
+
+const MESSAGES = {
+  start:        ["같이 열심히 해보자! 💪", "집중 모드 ON! 🔥", "화이팅! ✨", "오늘도 파이팅! 🎉"],
+  pause:        ["잠깐 쉬어가~ 😊", "금방 돌아와!", "숨 좀 고르자!", "짧게 쉬고 다시!"],
+  resume:       ["다시 달려보자! 🚀", "잘 쉬었어? 파이팅!", "집중 또 집중! 🎯", "이번엔 더 잘할 수 있어!"],
+  stop:         ["수고했어! 🥰", "오늘도 고생했어~", "훌륭해! 내일도 화이팅!", "잘했어! 😄"],
+  click:        ["뭐 공부할 거야?", "나 여기 있어! 😄", "언제 시작해?", "같이 하자~"],
+  clickRunning: ["잘 하고 있어! 👍", "집중 또 집중! 🔥", "조금만 더!", "멈추지 마! 💪"],
+  clickPaused:  ["빨리 다시 시작해!", "쉬는 시간 끝~?", "조금만 더 힘내!", "거의 다 왔어!"],
+};
+
+function pick(arr: string[]) {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+function SpeechBubble({ message }: { message: string }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.8, y: 4 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.8, y: 4 }}
+      transition={{ type: "spring", stiffness: 400, damping: 28 }}
+      className="flex justify-center pb-2"
+    >
+      <div className="relative rounded-xl bg-white px-3 py-1.5 text-xs font-medium text-zinc-800 shadow-lg">
+        {message}
+        <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 size-3 rotate-45 bg-white" />
+      </div>
+    </motion.div>
+  );
+}
 
 function formatDuration(seconds: number) {
   const h = Math.floor(seconds / 3600);
@@ -21,17 +53,31 @@ export function FloatContent({ onClose }: { onClose: () => void }) {
   const [elapsed, setElapsed] = useState(0);
   const [title, setTitle] = useState("");
   const [inputTitle, setInputTitle] = useState("");
+  const [bubble, setBubble] = useState<string | null>(null);
+
   const channelRef = useRef<BroadcastChannel | null>(null);
   const imgRef = useRef<HTMLImageElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  // 페이지 이동 후에도 독립적으로 시간 계산하기 위한 ref
   const startedAtRef = useRef<number | null>(null);
   const accumulatedMsRef = useRef<number>(0);
   const runningRef = useRef(false);
+  const bubbleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastClickRef = useRef<number>(0);
+  const prevRunningRef = useRef(false);
+  const prevPausedRef = useRef(false);
 
   const gifActive = running && !paused;
 
-  // Electron 환경 감지 + 투명 배경 적용
+  function showBubble(msg: string, duration = 3000) {
+    if (bubbleTimerRef.current) clearTimeout(bubbleTimerRef.current);
+    setBubble(msg);
+    bubbleTimerRef.current = setTimeout(() => setBubble(null), duration);
+  }
+
+  useEffect(() => () => {
+    if (bubbleTimerRef.current) clearTimeout(bubbleTimerRef.current);
+  }, []);
+
   useEffect(() => {
     const electron = !!window.electronAPI?.isElectron;
     setIsElectron(electron);
@@ -41,7 +87,6 @@ export function FloatContent({ onClose }: { onClose: () => void }) {
     }
   }, []);
 
-  // GIF 비활성 시 캔버스에 현재 프레임 캡처 (일시정지/정지 시 동결 효과)
   useEffect(() => {
     if (!gifActive && canvasRef.current && imgRef.current) {
       const ctx = canvasRef.current.getContext("2d");
@@ -52,18 +97,32 @@ export function FloatContent({ onClose }: { onClose: () => void }) {
     }
   }, [gifActive]);
 
-  // BroadcastChannel 연결
   useEffect(() => {
     const channel = new BroadcastChannel(TIMER_CHANNEL_NAME);
     channelRef.current = channel;
     channel.onmessage = (event: MessageEvent<TimerMessage>) => {
       const msg = event.data;
       if (msg.type === "STATE") {
+        const wasRunning = prevRunningRef.current;
+        const wasPaused = prevPausedRef.current;
+
+        if (!wasRunning && !wasPaused && msg.running && !msg.paused) {
+          showBubble(pick(MESSAGES.start));
+        } else if (wasRunning && !wasPaused && msg.paused) {
+          showBubble(pick(MESSAGES.pause));
+        } else if (wasPaused && msg.running && !msg.paused) {
+          showBubble(pick(MESSAGES.resume));
+        } else if ((wasRunning || wasPaused) && !msg.running && !msg.paused) {
+          showBubble(pick(MESSAGES.stop), 4000);
+        }
+
+        prevRunningRef.current = msg.running;
+        prevPausedRef.current = msg.paused;
+
         setRunning(msg.running);
         setPaused(msg.paused);
         setElapsed(msg.elapsed);
         if (msg.title) setTitle(msg.title);
-        // 타임스탬프 저장 → 자체 interval에서 독립 계산
         startedAtRef.current = msg.startedAt ?? null;
         accumulatedMsRef.current = msg.accumulatedMs ?? msg.elapsed * 1000;
         runningRef.current = msg.running;
@@ -73,7 +132,6 @@ export function FloatContent({ onClose }: { onClose: () => void }) {
     return () => channel.close();
   }, []);
 
-  // 메인 페이지와 무관하게 자체적으로 시간 갱신
   useEffect(() => {
     const interval = setInterval(() => {
       if (runningRef.current && startedAtRef.current !== null) {
@@ -90,7 +148,15 @@ export function FloatContent({ onClose }: { onClose: () => void }) {
     channelRef.current?.postMessage(msg);
   }
 
-  // ─── 공통 버튼 ────────────────────────────────────────────────────────────
+  function handleGifClick() {
+    const now = Date.now();
+    if (now - lastClickRef.current < 2000) return;
+    lastClickRef.current = now;
+    if (running) showBubble(pick(MESSAGES.clickRunning));
+    else if (paused) showBubble(pick(MESSAGES.clickPaused));
+    else showBubble(pick(MESSAGES.click));
+  }
+
   const buttons = (
     <div className="flex gap-2" style={{ WebkitAppRegion: "no-drag" }}>
       {!running && !paused && (
@@ -129,10 +195,15 @@ export function FloatContent({ onClose }: { onClose: () => void }) {
     </div>
   );
 
-  // ─── GIF / 캔버스 ─────────────────────────────────────────────────────────
   const gifArea = (
-    <div className="relative size-28">
-      {/* 실행 중: 정상 GIF 재생 */}
+    <div className="flex flex-col items-center" style={{ WebkitAppRegion: "no-drag" }}>
+      <AnimatePresence>
+        {bubble && <SpeechBubble key={bubble} message={bubble} />}
+      </AnimatePresence>
+      <div
+        className="relative size-28 cursor-pointer"
+        onClick={handleGifClick}
+      >
       <img
         ref={imgRef}
         src="/doraemon.gif"
@@ -142,7 +213,6 @@ export function FloatContent({ onClose }: { onClose: () => void }) {
         draggable={false}
         className={`absolute inset-0 size-28 rounded-xl object-contain transition-opacity duration-300 ${gifActive ? "opacity-100" : "opacity-0"}`}
       />
-      {/* 일시정지: 동결 프레임 + grayscale / 정지: 동결 프레임 + 어둡게 */}
       <canvas
         ref={canvasRef}
         width={GIF_SIZE}
@@ -152,10 +222,10 @@ export function FloatContent({ onClose }: { onClose: () => void }) {
           gifActive ? "opacity-0" : paused ? "grayscale opacity-60" : "opacity-40",
         ].join(" ")}
       />
+      </div>
     </div>
   );
 
-  // ─── Electron: 투명 배경 + 드래그 가능한 둥근 카드 ────────────────────────
   if (isElectron) {
     return (
       <div className="h-screen w-screen p-1.5 flex flex-col">
@@ -163,7 +233,6 @@ export function FloatContent({ onClose }: { onClose: () => void }) {
           className="flex-1 bg-zinc-900/95 rounded-2xl flex flex-col overflow-hidden shadow-2xl text-white select-none"
           style={{ WebkitAppRegion: "drag" }}
         >
-          {/* 상단: 닫기 버튼 */}
           <div className="flex justify-end px-3 pt-3" style={{ WebkitAppRegion: "no-drag" }}>
             <button
               onClick={onClose}
@@ -174,11 +243,9 @@ export function FloatContent({ onClose }: { onClose: () => void }) {
             </button>
           </div>
 
-          {/* 중앙 콘텐츠 */}
           <div className="flex flex-1 flex-col items-center justify-center gap-4 px-4 pb-6">
             {gifArea}
 
-            {/* 경과 시간 */}
             <div
               className="font-mono text-4xl font-bold tabular-nums tracking-tight"
               style={{ textShadow: "0 2px 8px rgba(0,0,0,0.8)" }}
@@ -186,7 +253,6 @@ export function FloatContent({ onClose }: { onClose: () => void }) {
               {formatDuration(elapsed)}
             </div>
 
-            {/* 제목 / 입력 */}
             {running || paused ? (
               <p className="max-w-[200px] truncate text-center text-xs text-zinc-400">
                 {title}
@@ -212,7 +278,6 @@ export function FloatContent({ onClose }: { onClose: () => void }) {
     );
   }
 
-  // ─── 웹 (Document PiP / 인페이지): 기존 전체 채우기 레이아웃 ───────────────
   return (
     <div className="fixed inset-0 z-[9999] flex flex-col bg-zinc-900 text-white select-none">
       <div className="flex justify-end px-3 pt-3">

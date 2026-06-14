@@ -2,9 +2,8 @@
 
 import { Button } from "@/components/ui/button";
 import { useWikiActions } from "./wiki-actions-provider";
-import type { Workspace } from "@/generated/prisma/client";
 
-export function EmptyWikiState({ workspace }: { workspace: Workspace }) {
+export function EmptyWikiState() {
   const { isPending, openCreateFolder, openCreateDocument } = useWikiActions();
 
   return (

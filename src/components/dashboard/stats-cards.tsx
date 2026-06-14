@@ -5,21 +5,21 @@ type Stat = {
 };
 
 export function StatsCards({
-  devDocuments,
-  studyDocuments,
+  totalDocuments,
   publishedPosts,
   pendingTodos,
+  completedThisMonth,
 }: {
-  devDocuments: number;
-  studyDocuments: number;
+  totalDocuments: number;
   publishedPosts: number;
   pendingTodos: number;
+  completedThisMonth: number;
 }) {
   const stats: Stat[] = [
-    { label: "개발 문서", value: devDocuments, unit: "개" },
-    { label: "공부 문서", value: studyDocuments, unit: "개" },
+    { label: "전체 문서", value: totalDocuments, unit: "개" },
     { label: "공개된 블로그 글", value: publishedPosts, unit: "개" },
     { label: "미완료 할 일", value: pendingTodos, unit: "개" },
+    { label: "이번 달 완료", value: completedThisMonth, unit: "개" },
   ];
 
   return (
