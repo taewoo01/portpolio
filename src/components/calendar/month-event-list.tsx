@@ -1,8 +1,10 @@
 "use client";
 
-import { format } from "date-fns";
+import { useState } from "react";
+import { format, startOfDay } from "date-fns";
 import { ko } from "date-fns/locale";
-import { CalendarDays } from "lucide-react";
+import { CalendarDays, ChevronDown, ChevronUp } from "lucide-react";
+import { cn } from "@/lib/utils";
 import type { EventModel } from "@/generated/prisma/models";
 import type { TaskWorkspace } from "@/generated/prisma/client";
 
@@ -28,6 +30,47 @@ const WORKSPACE_LABEL: Record<TaskWorkspace, string> = {
   other: "기타",
 };
 
+function EventCard({ event, past }: { event: EventModel; past?: boolean }) {
+  return (
+    <div
+      className={cn(
+        "flex items-center gap-3 rounded-xl px-4 py-3 shadow-sm ring-1 transition-opacity",
+        past
+          ? "bg-muted/50 ring-border/30 opacity-50"
+          : "bg-card ring-border/50"
+      )}
+    >
+      <div
+        className="size-2.5 shrink-0 rounded-full"
+        style={{ backgroundColor: past ? undefined : WORKSPACE_COLOR[event.workspace] }}
+      />
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-1.5">
+          <p className={cn("truncate text-sm font-medium", past && "text-muted-foreground line-through")}>
+            {event.title}
+          </p>
+          {event.recurrence === "weekly" && (
+            <span className="shrink-0 text-xs text-muted-foreground">↻</span>
+          )}
+        </div>
+        <p className="text-xs text-muted-foreground">
+          {event.allDay
+            ? format(event.startAt, "M.d (E)", { locale: ko }) + " 하루 종일"
+            : format(event.startAt, "M.d (E) HH:mm", { locale: ko })}
+        </p>
+      </div>
+      {!past && (
+        <span
+          className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium text-white"
+          style={{ backgroundColor: WORKSPACE_COLOR[event.workspace] }}
+        >
+          {WORKSPACE_LABEL[event.workspace]}
+        </span>
+      )}
+    </div>
+  );
+}
+
 export function MonthEventList({
   events,
   currentDate,
@@ -35,7 +78,17 @@ export function MonthEventList({
   events: EventModel[];
   currentDate: Date;
 }) {
+  const [showPast, setShowPast] = useState(false);
   const monthLabel = format(currentDate, "yyyy년 M월", { locale: ko });
+  const todayStart = startOfDay(new Date());
+
+  const upcoming = events
+    .filter((e) => new Date(e.startAt) >= todayStart)
+    .sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime());
+
+  const past = events
+    .filter((e) => new Date(e.startAt) < todayStart)
+    .sort((a, b) => new Date(b.startAt).getTime() - new Date(a.startAt).getTime());
 
   return (
     <div className="mt-2">
@@ -51,36 +104,31 @@ export function MonthEventList({
         </div>
       ) : (
         <div className="flex flex-col gap-2">
-          {events.map((event, i) => (
-            <div
-              key={`${event.id}_${i}`}
-              className="flex items-center gap-3 rounded-xl bg-card px-4 py-3 shadow-sm ring-1 ring-border/50"
-            >
-              <div
-                className="size-2.5 shrink-0 rounded-full"
-                style={{ backgroundColor: WORKSPACE_COLOR[event.workspace] }}
-              />
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5">
-                  <p className="truncate text-sm font-medium">{event.title}</p>
-                  {event.recurrence === "weekly" && (
-                    <span className="shrink-0 text-xs text-muted-foreground">↻</span>
-                  )}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {event.allDay
-                    ? format(event.startAt, "M.d (E)", { locale: ko }) + " 하루 종일"
-                    : format(event.startAt, "M.d (E) HH:mm", { locale: ko })}
-                </p>
-              </div>
-              <span
-                className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium text-white"
-                style={{ backgroundColor: WORKSPACE_COLOR[event.workspace] }}
-              >
-                {WORKSPACE_LABEL[event.workspace]}
-              </span>
+          {upcoming.length === 0 && past.length > 0 && (
+            <div className="flex h-16 items-center justify-center rounded-xl bg-muted/40 text-sm text-muted-foreground">
+              남은 일정이 없습니다
             </div>
+          )}
+
+          {upcoming.map((event, i) => (
+            <EventCard key={`${event.id}_${i}`} event={event} />
           ))}
+
+          {past.length > 0 && (
+            <>
+              <button
+                type="button"
+                onClick={() => setShowPast((v) => !v)}
+                className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+              >
+                {showPast ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
+                지난 일정 {past.length}개
+              </button>
+              {showPast && past.map((event, i) => (
+                <EventCard key={`past_${event.id}_${i}`} event={event} past />
+              ))}
+            </>
+          )}
         </div>
       )}
     </div>
