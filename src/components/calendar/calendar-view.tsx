@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { Calendar, dateFnsLocalizer, type SlotInfo } from "react-big-calendar";
-import { addWeeks, endOfMonth, format, getDay, parse, startOfMonth, startOfWeek } from "date-fns";
+import { addDays, addWeeks, endOfMonth, format, getDay, parse, startOfMonth, startOfWeek } from "date-fns";
 import { ko } from "date-fns/locale";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import { Button } from "@/components/ui/button";
@@ -63,27 +63,39 @@ const FILTER_LABELS: Record<FilterUser, string> = {
   yujin: USER_LABEL.yujin,
 };
 
+function getRecurrenceDays(recurrence: string, startAt: Date): number[] {
+  if (recurrence === "weekly") return [getDay(startAt)];
+  const match = recurrence.match(/^weekly:(.+)$/);
+  return match ? match[1].split(",").map(Number).filter(n => n >= 0 && n <= 6) : [getDay(startAt)];
+}
+
 function expandRecurringEvents(events: EventModel[], rangeStart: Date, rangeEnd: Date): CalendarEvent[] {
   const result: CalendarEvent[] = [];
 
   for (const event of events) {
     const duration = (event.endAt ?? event.startAt).getTime() - event.startAt.getTime();
 
-    if (event.recurrence === "weekly") {
-      let cursor = new Date(event.startAt);
-      while (cursor <= rangeEnd) {
-        if (cursor >= rangeStart) {
-          const occurrenceEnd = new Date(cursor.getTime() + duration);
-          result.push({
-            id: `${event.id}_${cursor.getTime()}`,
-            title: event.title,
-            start: new Date(cursor),
-            end: event.allDay ? new Date(occurrenceEnd.getTime() + 86400000) : occurrenceEnd,
-            allDay: event.allDay,
-            resource: event,
-          });
+    if (event.recurrence?.startsWith("weekly")) {
+      const targetDays = getRecurrenceDays(event.recurrence, event.startAt);
+      const startDay = getDay(event.startAt);
+
+      for (const targetDay of targetDays) {
+        const diff = (targetDay - startDay + 7) % 7;
+        let cursor = addDays(new Date(event.startAt), diff);
+        while (cursor <= rangeEnd) {
+          if (cursor >= rangeStart) {
+            const occurrenceEnd = new Date(cursor.getTime() + duration);
+            result.push({
+              id: `${event.id}_${targetDay}_${cursor.getTime()}`,
+              title: event.title,
+              start: new Date(cursor),
+              end: event.allDay ? new Date(occurrenceEnd.getTime() + 86400000) : occurrenceEnd,
+              allDay: event.allDay,
+              resource: event,
+            });
+          }
+          cursor = addWeeks(cursor, 1);
         }
-        cursor = addWeeks(cursor, 1);
       }
     } else {
       result.push({
@@ -143,12 +155,17 @@ export function CalendarView({
     const me = endOfMonth(currentDate);
     return filteredEvents
       .flatMap((event) => {
-        if (event.recurrence === "weekly") {
+        if (event.recurrence?.startsWith("weekly")) {
+          const targetDays = getRecurrenceDays(event.recurrence, event.startAt);
+          const startDay = getDay(event.startAt);
           const occurrences: EventModel[] = [];
-          let cursor = new Date(event.startAt);
-          while (cursor <= me) {
-            if (cursor >= ms) occurrences.push({ ...event, startAt: new Date(cursor) });
-            cursor = addWeeks(cursor, 1);
+          for (const targetDay of targetDays) {
+            const diff = (targetDay - startDay + 7) % 7;
+            let cursor = addDays(new Date(event.startAt), diff);
+            while (cursor <= me) {
+              if (cursor >= ms) occurrences.push({ ...event, startAt: new Date(cursor) });
+              cursor = addWeeks(cursor, 1);
+            }
           }
           return occurrences;
         }
@@ -230,7 +247,7 @@ export function CalendarView({
             event: ({ event }) => (
               <div className="flex items-center gap-1 overflow-hidden">
                 <span className="truncate">{event.title}</span>
-                {event.resource.recurrence === "weekly" && (
+                {event.resource.recurrence?.startsWith("weekly") && (
                   <span className="shrink-0 opacity-60 text-[10px]">↻</span>
                 )}
                 {event.resource.createdBy && (

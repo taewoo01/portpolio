@@ -21,7 +21,8 @@ function parseEventInput(formData: FormData) {
   const description = String(formData.get("description") ?? "").trim() || null;
   const workspace = formData.get("workspace") as TaskWorkspace;
   const allDay = formData.get("allDay") === "on";
-  const recurrence = formData.get("recurrence") === "weekly" ? "weekly" : null;
+  const recurrenceRaw = String(formData.get("recurrence") ?? "").trim();
+  const recurrence = recurrenceRaw.startsWith("weekly") ? recurrenceRaw : null;
   const startAt = parseLocalDateTime(String(formData.get("startAt") ?? ""), tzOffset);
   const endAtRaw = String(formData.get("endAt") ?? "").trim();
   const endAt = endAtRaw ? parseLocalDateTime(endAtRaw, tzOffset) : null;

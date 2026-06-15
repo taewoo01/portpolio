@@ -30,6 +30,17 @@ const WORKSPACE_LABEL: Record<TaskWorkspace, string> = {
   other: "기타",
 };
 
+const DAY_NAMES = ["일", "월", "화", "수", "목", "금", "토"];
+
+function formatRecurrence(recurrence: string): string {
+  if (recurrence === "weekly") return "매주";
+  const match = recurrence.match(/^weekly:(.+)$/);
+  if (!match) return "매주";
+  const days = match[1].split(",").map(Number).sort((a, b) => a - b);
+  if (days.length === 7) return "매일";
+  return "매주 " + days.map(d => DAY_NAMES[d]).join("·");
+}
+
 function EventCard({ event, past }: { event: EventModel; past?: boolean }) {
   return (
     <div
@@ -49,8 +60,10 @@ function EventCard({ event, past }: { event: EventModel; past?: boolean }) {
           <p className={cn("truncate text-sm font-medium", past && "text-muted-foreground line-through")}>
             {event.title}
           </p>
-          {event.recurrence === "weekly" && (
-            <span className="shrink-0 text-xs text-muted-foreground">↻</span>
+          {event.recurrence?.startsWith("weekly") && (
+            <span className="shrink-0 text-xs text-muted-foreground">
+              ↻ {formatRecurrence(event.recurrence)}
+            </span>
           )}
         </div>
         <p className="text-xs text-muted-foreground">

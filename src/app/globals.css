@@ -216,3 +216,35 @@
   font-size: 0.7rem !important;
 }
 
+@keyframes aurora-shift {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.aurora-bg {
+  background: linear-gradient(
+    -45deg,
+    #1e40af,
+    #3182F6,
+    #7c3aed,
+    #0891b2,
+    #3182F6
+  );
+  background-size: 400% 400%;
+  animation: aurora-shift 18s ease infinite;
+}
+
+.dark .aurora-bg {
+  background: linear-gradient(
+    -45deg,
+    #1e3a8a,
+    #1d4ed8,
+    #5b21b6,
+    #0e7490,
+    #1d4ed8
+  );
+  background-size: 400% 400%;
+  animation: aurora-shift 18s ease infinite;
+}
+
