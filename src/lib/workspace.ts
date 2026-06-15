@@ -7,6 +7,7 @@ export const TASK_WORKSPACE_LABEL: Record<TaskWorkspace, string> = {
   exam: "시험",
   appointment: "약속",
   exercise: "운동",
+  alba: "알바",
   other: "기타",
 };
 
@@ -17,6 +18,7 @@ export const TASK_WORKSPACE_BADGE_CLASS: Record<TaskWorkspace, string> = {
   exam: "bg-red-500/15 text-red-700 dark:text-red-400",
   appointment: "bg-orange-500/15 text-orange-700 dark:text-orange-400",
   exercise: "bg-green-500/15 text-green-700 dark:text-green-400",
+  alba: "bg-yellow-500/15 text-yellow-700 dark:text-yellow-400",
   other: "bg-zinc-500/15 text-zinc-700 dark:text-zinc-400",
 };
 
@@ -27,6 +29,7 @@ export const TASK_WORKSPACE_DOT_CLASS: Record<TaskWorkspace, string> = {
   exam: "bg-red-500",
   appointment: "bg-orange-500",
   exercise: "bg-green-500",
+  alba: "bg-yellow-500",
   other: "bg-zinc-400",
 };
 
