@@ -28,6 +28,7 @@ const WORKSPACE_COLOR: Record<TaskWorkspace, string> = {
   exam: "#ef4444",
   appointment: "#f97316",
   exercise: "#22c55e",
+  alba: "#eab308",
   other: "#71717a",
 };
 

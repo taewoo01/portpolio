@@ -13,6 +13,7 @@ const WORKSPACE_COLOR: Record<TaskWorkspace, string> = {
   exam: "#ef4444",
   appointment: "#f97316",
   exercise: "#22c55e",
+  alba: "#eab308",
   other: "#71717a",
 };
 
@@ -23,6 +24,7 @@ const WORKSPACE_LABEL: Record<TaskWorkspace, string> = {
   exam: "시험",
   appointment: "약속",
   exercise: "운동",
+  alba: "알바",
   other: "기타",
 };
 
