@@ -67,7 +67,7 @@ export function FolderSidebar({
           전체
         </button>
         {categories.map((cat) => (
-          <div key={cat.id} className="group flex items-center">
+          <div key={cat.id} className="flex items-center">
             <button
               onClick={() => onCategorySelect(cat.id)}
               className={cn(
@@ -80,7 +80,7 @@ export function FolderSidebar({
               <span className="size-2 shrink-0 rounded-full" style={{ backgroundColor: cat.color }} />
               {cat.name}
             </button>
-            <div className="flex shrink-0 gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+            <div className="flex shrink-0 gap-0.5">
               <button
                 type="button"
                 title="수정"
