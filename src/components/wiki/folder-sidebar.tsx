@@ -38,7 +38,7 @@ export function FolderSidebar({
   selectedCategoryId: string | null;
   onCategorySelect: (id: string | null) => void;
 }) {
-  const { isPending, openCreateFolder, openCreateDocument, openCreateCategory } = useWikiActions();
+  const { isPending, openCreateFolder, openCreateDocument, openCreateCategory, openEditCategory, openDeleteCategory } = useWikiActions();
 
   const showBadge = selectedCategoryId === null;
 
@@ -67,19 +67,40 @@ export function FolderSidebar({
           전체
         </button>
         {categories.map((cat) => (
-          <button
-            key={cat.id}
-            onClick={() => onCategorySelect(cat.id)}
-            className={cn(
-              "flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm transition-colors",
-              selectedCategoryId === cat.id
-                ? "bg-accent font-semibold text-accent-foreground"
-                : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
-            )}
-          >
-            <span className="size-2 shrink-0 rounded-full" style={{ backgroundColor: cat.color }} />
-            {cat.name}
-          </button>
+          <div key={cat.id} className="group flex items-center">
+            <button
+              onClick={() => onCategorySelect(cat.id)}
+              className={cn(
+                "flex flex-1 items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm transition-colors",
+                selectedCategoryId === cat.id
+                  ? "bg-accent font-semibold text-accent-foreground"
+                  : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+              )}
+            >
+              <span className="size-2 shrink-0 rounded-full" style={{ backgroundColor: cat.color }} />
+              {cat.name}
+            </button>
+            <div className="flex shrink-0 gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+              <button
+                type="button"
+                title="수정"
+                onClick={() => openEditCategory(cat.id, cat.name, cat.color)}
+                disabled={isPending}
+                className="rounded p-0.5 text-muted-foreground hover:text-foreground"
+              >
+                <Pencil className="size-3" />
+              </button>
+              <button
+                type="button"
+                title="삭제"
+                onClick={() => openDeleteCategory(cat.id, cat.name)}
+                disabled={isPending}
+                className="rounded p-0.5 text-muted-foreground hover:text-destructive"
+              >
+                <Trash2 className="size-3" />
+              </button>
+            </div>
+          </div>
         ))}
         <button
           onClick={openCreateCategory}

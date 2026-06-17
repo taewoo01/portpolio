@@ -23,7 +23,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createFolderAction, renameFolderAction, deleteFolderAction } from "@/lib/actions/folders";
 import { createDocumentAction } from "@/lib/actions/documents";
-import { createWorkspaceCategoryAction } from "@/lib/actions/workspace-categories";
+import { createWorkspaceCategoryAction, updateWorkspaceCategoryAction, deleteWorkspaceCategoryAction } from "@/lib/actions/workspace-categories";
 import { workspaceBadgeStyle } from "@/lib/wiki";
 import type { WorkspaceCategory } from "@/lib/wiki";
 
@@ -34,7 +34,9 @@ type DialogState =
   | { kind: "create-document"; parentId: string | null; inheritCategoryId?: string }
   | { kind: "rename-folder"; folderId: string; initialName: string; categoryId?: string }
   | { kind: "delete-folder"; folderId: string; name: string; categoryId?: string }
-  | { kind: "create-category" };
+  | { kind: "create-category" }
+  | { kind: "edit-category"; categoryId: string; initialName: string; initialColor: string }
+  | { kind: "delete-category"; categoryId: string; name: string };
 
 type WikiActionsContextValue = {
   isPending: boolean;
@@ -43,6 +45,8 @@ type WikiActionsContextValue = {
   openRenameFolder: (folderId: string, name: string, categoryId?: string) => void;
   openDeleteFolder: (folderId: string, name: string, categoryId?: string) => void;
   openCreateCategory: () => void;
+  openEditCategory: (categoryId: string, name: string, color: string) => void;
+  openDeleteCategory: (categoryId: string, name: string) => void;
 };
 
 const WikiActionsContext = createContext<WikiActionsContextValue | null>(null);
@@ -59,6 +63,8 @@ const DIALOG_TITLE: Record<DialogState["kind"], string> = {
   "rename-folder": "폴더 이름 변경",
   "delete-folder": "폴더 삭제",
   "create-category": "카테고리 추가",
+  "edit-category": "카테고리 수정",
+  "delete-category": "카테고리 삭제",
 };
 
 export function WikiActionsProvider({
@@ -88,8 +94,13 @@ export function WikiActionsProvider({
   useEffect(() => {
     if (!dialog) return;
     setError(null);
-    setValue(dialog.kind === "rename-folder" ? dialog.initialName : "");
+    setValue(
+      dialog.kind === "rename-folder" || dialog.kind === "edit-category"
+        ? dialog.initialName
+        : ""
+    );
     if (dialog.kind === "create-category") setSelectedColor(COLOR_PALETTE[0]);
+    if (dialog.kind === "edit-category") setSelectedColor(dialog.initialColor);
     const timer = window.setTimeout(() => inputRef.current?.focus(), 50);
     return () => window.clearTimeout(timer);
   }, [dialog]);
@@ -120,6 +131,27 @@ export function WikiActionsProvider({
       startTransition(async () => {
         const result = await createWorkspaceCategoryAction(value.trim(), selectedColor);
         if ("error" in result) { setError(result.error); return; }
+        router.refresh();
+        close();
+      });
+      return;
+    }
+
+    if (dialog.kind === "edit-category") {
+      if (!value.trim()) { setError("이름을 입력해주세요."); return; }
+      startTransition(async () => {
+        const result = await updateWorkspaceCategoryAction(dialog.categoryId, value.trim(), selectedColor);
+        if (result?.error) { setError(result.error); return; }
+        router.refresh();
+        close();
+      });
+      return;
+    }
+
+    if (dialog.kind === "delete-category") {
+      startTransition(async () => {
+        const result = await deleteWorkspaceCategoryAction(dialog.categoryId);
+        if (result?.error) { setError(result.error); return; }
         router.refresh();
         close();
       });
@@ -178,11 +210,15 @@ export function WikiActionsProvider({
     openDeleteFolder: (folderId, name, categoryId) =>
       setDialog({ kind: "delete-folder", folderId, name, categoryId }),
     openCreateCategory: () => setDialog({ kind: "create-category" }),
+    openEditCategory: (categoryId, name, color) =>
+      setDialog({ kind: "edit-category", categoryId, initialName: name, initialColor: color }),
+    openDeleteCategory: (categoryId, name) =>
+      setDialog({ kind: "delete-category", categoryId, name }),
   };
 
   const isCreateItem = dialog?.kind === "create-folder" || dialog?.kind === "create-document";
   const showCategorySelector = isCreateItem && !("inheritCategoryId" in dialog && dialog.inheritCategoryId);
-  const needsInput = dialog?.kind !== "delete-folder";
+  const needsInput = dialog?.kind !== "delete-folder" && dialog?.kind !== "delete-category";
 
   return (
     <WikiActionsContext.Provider value={contextValue}>
@@ -199,9 +235,16 @@ export function WikiActionsProvider({
                 하위 폴더는 함께 삭제되고, 안의 문서는 상위로 이동합니다.
               </DialogDescription>
             )}
+            {dialog?.kind === "delete-category" && (
+              <DialogDescription>
+                &quot;{dialog.name}&quot; 카테고리를 삭제할까요?
+                <br />
+                폴더나 문서가 있으면 삭제할 수 없습니다.
+              </DialogDescription>
+            )}
           </DialogHeader>
 
-          {dialog?.kind === "create-category" && (
+          {(dialog?.kind === "create-category" || dialog?.kind === "edit-category") && (
             <div className="space-y-3">
               <div className="space-y-2">
                 <Label htmlFor="wiki-action-input">카테고리 이름</Label>
@@ -237,7 +280,7 @@ export function WikiActionsProvider({
             </div>
           )}
 
-          {needsInput && dialog?.kind !== "create-category" && (
+          {needsInput && dialog?.kind !== "create-category" && dialog?.kind !== "edit-category" && (
             <div className="space-y-3">
               {showCategorySelector && categories.length > 0 && (
                 <div className="flex flex-wrap gap-2">
@@ -289,13 +332,13 @@ export function WikiActionsProvider({
             </Button>
             <Button
               type="button"
-              variant={dialog?.kind === "delete-folder" ? "destructive" : "default"}
+              variant={dialog?.kind === "delete-folder" || dialog?.kind === "delete-category" ? "destructive" : "default"}
               onClick={submit}
               disabled={isPending}
             >
               {isPending
                 ? "처리 중..."
-                : dialog?.kind === "delete-folder"
+                : dialog?.kind === "delete-folder" || dialog?.kind === "delete-category"
                   ? "삭제"
                   : dialog?.kind === "create-document"
                     ? "만들기"
