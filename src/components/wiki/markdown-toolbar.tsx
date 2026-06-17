@@ -143,7 +143,7 @@ export function MarkdownToolbar({
 
     onChange(result.content);
     requestAnimationFrame(() => {
-      textarea.focus();
+      textarea.focus({ preventScroll: true });
       textarea.setSelectionRange(result.start, result.end);
     });
   }

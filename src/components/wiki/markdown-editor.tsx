@@ -50,7 +50,7 @@ export function MarkdownEditor({
       onChange(value.slice(0, cursor) + insertion + value.slice(cursor));
 
       requestAnimationFrame(() => {
-        textarea?.focus();
+        textarea?.focus({ preventScroll: true });
         const pos = cursor + insertion.length;
         textarea?.setSelectionRange(pos, pos);
       });
@@ -98,7 +98,7 @@ export function MarkdownEditor({
             onChange={(event) => onChange(event.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="마크다운으로 내용을 작성하세요&#10;&#10;수식: $x^2 + y^2 = r^2$ 또는 $$\sum_{i=0}^{n} i$$"
-            className="min-h-[60vh] flex-1 resize-none font-mono text-sm"
+            className="min-h-[60dvh] flex-1 resize-none font-mono text-sm [field-sizing:fixed] overflow-y-auto md:[field-sizing:content] md:overflow-visible"
             disabled={uploading}
           />
         )}

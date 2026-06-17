@@ -5,6 +5,7 @@ import { motion, AnimatePresence, useMotionValue } from "framer-motion";
 import { X, Minus } from "lucide-react";
 import { TIMER_CHANNEL_NAME } from "@/lib/timer-channel";
 import { useFloatingTimer } from "@/lib/floating-timer-context";
+import { useTimer } from "@/lib/timer-store";
 import type { TimerMessage } from "@/lib/timer-channel";
 
 const STORAGE_KEY = "portpolio-timer-pos";
@@ -50,30 +51,26 @@ function formatDuration(seconds: number) {
 
 export function FloatingTimer() {
   const { isOpen, close } = useFloatingTimer();
+  const { sessionId, title: timerTitle, elapsed: timerElapsed, paused: timerPaused, start, pause, resume, stop } = useTimer();
+  const isRunning = Boolean(sessionId);
+
   const [minimized, setMinimized] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [constraints, setConstraints] = useState({ right: 1200, bottom: 800 });
-
-  const [running, setRunning] = useState(false);
-  const [paused, setPaused] = useState(false);
-  const [elapsed, setElapsed] = useState(0);
-  const [title, setTitle] = useState("");
   const [inputTitle, setInputTitle] = useState("");
-
   const [bubble, setBubble] = useState<string | null>(null);
   const bubbleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastClickRef = useRef<number>(0);
   const prevRunningRef = useRef(false);
   const prevPausedRef = useRef(false);
 
-  const channelRef = useRef<BroadcastChannel | null>(null);
   const imgRef = useRef<HTMLImageElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const motionX = useMotionValue(0);
   const motionY = useMotionValue(0);
 
-  const gifActive = running && !paused;
+  const gifActive = isRunning && !timerPaused;
 
   function showBubble(msg: string, duration = 3000) {
     if (bubbleTimerRef.current) clearTimeout(bubbleTimerRef.current);
@@ -133,7 +130,6 @@ export function FloatingTimer() {
   useEffect(() => {
     if (!isOpen) return;
     const channel = new BroadcastChannel(TIMER_CHANNEL_NAME);
-    channelRef.current = channel;
 
     channel.onmessage = (event: MessageEvent<TimerMessage>) => {
       const msg = event.data;
@@ -148,24 +144,20 @@ export function FloatingTimer() {
         } else if (wasPaused && msg.running && !msg.paused) {
           showBubble(pick(MESSAGES.resume));
         } else if ((wasRunning || wasPaused) && !msg.running && !msg.paused) {
-          showBubble(pick(MESSAGES.stop), 4000);
+          if (msg.autoStop) {
+            showBubble("12시간이 지나 자동 종료됐어요 😴", 5000);
+          } else {
+            showBubble(pick(MESSAGES.stop), 4000);
+          }
         }
 
         prevRunningRef.current = msg.running;
         prevPausedRef.current = msg.paused;
-
-        setRunning(msg.running);
-        setPaused(msg.paused);
-        setElapsed(msg.elapsed);
-        if (msg.title) setTitle(msg.title);
       }
     };
     channel.postMessage({ type: "REQUEST_STATE" });
 
-    return () => {
-      channel.close();
-      channelRef.current = null;
-    };
+    return () => { channel.close(); };
   }, [isOpen]);
 
   useEffect(() => {
@@ -174,10 +166,6 @@ export function FloatingTimer() {
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [isOpen, close]);
-
-  function send(msg: TimerMessage) {
-    channelRef.current?.postMessage(msg);
-  }
 
   function savePosition() {
     try {
@@ -190,8 +178,8 @@ export function FloatingTimer() {
     if (now - lastClickRef.current < 2000) return;
     lastClickRef.current = now;
 
-    if (running) showBubble(pick(MESSAGES.clickRunning));
-    else if (paused) showBubble(pick(MESSAGES.clickPaused));
+    if (isRunning) showBubble(pick(MESSAGES.clickRunning));
+    else if (timerPaused) showBubble(pick(MESSAGES.clickPaused));
     else showBubble(pick(MESSAGES.click));
   }
 
@@ -212,7 +200,7 @@ export function FloatingTimer() {
           transition={{ duration: 0.18, ease: "easeOut" }}
           className={
             isMobile
-              ? "fixed bottom-0 left-0 right-0 z-[9999] rounded-t-2xl bg-zinc-900 text-white shadow-2xl"
+              ? `fixed ${minimized ? "bottom-16" : "bottom-0"} left-0 right-0 z-[9999] rounded-t-2xl bg-zinc-900 text-white shadow-2xl`
               : "fixed left-0 top-0 z-[9999] w-[280px] cursor-grab rounded-2xl bg-zinc-900 text-white shadow-2xl active:cursor-grabbing select-none"
           }
         >
@@ -277,14 +265,14 @@ export function FloatingTimer() {
 
                   {/* 경과 시간 */}
                   <div className="font-mono text-3xl font-bold tabular-nums tracking-tight">
-                    {formatDuration(elapsed)}
+                    {formatDuration(timerElapsed)}
                   </div>
 
                   {/* 제목 표시 / 입력 */}
-                  {running || paused ? (
+                  {isRunning || timerPaused ? (
                     <p className="max-w-[200px] truncate text-center text-xs text-zinc-400">
-                      {title}
-                      {paused && <span className="ml-1 text-yellow-400">(일시정지)</span>}
+                      {timerTitle}
+                      {timerPaused && <span className="ml-1 text-yellow-400">(일시정지)</span>}
                     </p>
                   ) : (
                     <input
@@ -292,7 +280,7 @@ export function FloatingTimer() {
                       onChange={(e) => setInputTitle(e.target.value)}
                       onKeyDown={(e) => {
                         if (e.key === "Enter" && inputTitle.trim()) {
-                          send({ type: "START", title: inputTitle.trim() });
+                          start(inputTitle.trim());
                         }
                       }}
                       placeholder="공부 내용 입력..."
@@ -302,34 +290,34 @@ export function FloatingTimer() {
 
                   {/* 버튼 */}
                   <div className="flex gap-2">
-                    {!running && !paused && (
+                    {!isRunning && !timerPaused && (
                       <button
-                        onClick={() => inputTitle.trim() && send({ type: "START", title: inputTitle.trim() })}
+                        onClick={() => inputTitle.trim() && start(inputTitle.trim())}
                         disabled={!inputTitle.trim()}
                         className="rounded-xl bg-blue-600 px-5 py-2 text-sm font-semibold transition-colors hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-40"
                       >
                         시작
                       </button>
                     )}
-                    {running && (
+                    {isRunning && (
                       <button
-                        onClick={() => send({ type: "PAUSE" })}
+                        onClick={() => pause()}
                         className="rounded-xl bg-zinc-700 px-4 py-2 text-sm font-semibold transition-colors hover:bg-zinc-600"
                       >
                         일시정지
                       </button>
                     )}
-                    {paused && (
+                    {timerPaused && (
                       <button
-                        onClick={() => send({ type: "RESUME" })}
+                        onClick={() => resume()}
                         className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold transition-colors hover:bg-blue-500"
                       >
                         계속
                       </button>
                     )}
-                    {(running || paused) && (
+                    {(isRunning || timerPaused) && (
                       <button
-                        onClick={() => send({ type: "STOP" })}
+                        onClick={() => stop()}
                         className="rounded-xl bg-red-600/80 px-4 py-2 text-sm font-semibold transition-colors hover:bg-red-500"
                       >
                         정지

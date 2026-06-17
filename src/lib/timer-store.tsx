@@ -83,9 +83,32 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   // 타이머 인터벌 (sessionId가 있을 때만)
+  const AUTO_STOP_SECONDS = 43200; // 12시간
+
   useEffect(() => {
     if (sessionId) {
-      intervalRef.current = setInterval(() => setElapsed(e => e + 1), 1000);
+      intervalRef.current = setInterval(() => {
+        const currentElapsed = startedAtRef.current !== null
+          ? Math.floor((accumulatedMsRef.current + (Date.now() - startedAtRef.current)) / 1000)
+          : Math.floor(accumulatedMsRef.current / 1000);
+
+        if (currentElapsed >= AUTO_STOP_SECONDS) {
+          channelRef.current?.postMessage({
+            type: "STATE",
+            running: false,
+            paused: false,
+            elapsed: currentElapsed,
+            title: snapRef.current.title,
+            startedAt: null,
+            accumulatedMs: accumulatedMsRef.current,
+            autoStop: true,
+          });
+          actionsRef.current.stop();
+          return;
+        }
+
+        setElapsed(currentElapsed);
+      }, 1000);
     } else {
       if (intervalRef.current) clearInterval(intervalRef.current);
     }

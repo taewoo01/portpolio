@@ -16,7 +16,8 @@ type DayStat = { date: string; seconds: number };
 function formatMinutes(seconds: number) {
   const h = Math.floor(seconds / 3600);
   const m = Math.floor((seconds % 3600) / 60);
-  if (h > 0) return `${h}h ${m}m`;
+  if (h > 0 && m > 0) return `${h}h ${m}m`;
+  if (h > 0) return `${h}h`;
   return `${m}m`;
 }
 
@@ -43,7 +44,21 @@ export function StudyChart({
   monthly: DayStat[];
 }) {
   const [tab, setTab] = useState<"week" | "month">("week");
-  const data = tab === "week" ? weekly : monthly;
+  const MAX_SECONDS = 86400;
+  const data = (tab === "week" ? weekly : monthly).map((d) => ({
+    ...d,
+    seconds: Math.min(d.seconds, MAX_SECONDS),
+  }));
+
+  function getNiceTicks(maxSec: number): number[] {
+    if (maxSec === 0) return [0];
+    const intervals = [1800, 3600, 7200, 10800, 21600]; // 30m, 1h, 2h, 3h, 6h
+    const interval = intervals.find((i) => Math.ceil(maxSec / i) <= 5) ?? 21600;
+    const niceMax = Math.ceil(maxSec / interval) * interval;
+    return Array.from({ length: Math.floor(niceMax / interval) + 1 }, (_, i) => i * interval);
+  }
+  const maxSeconds = Math.max(...data.map((d) => d.seconds), 0);
+  const yTicks = getNiceTicks(maxSeconds);
 
   return (
     <div className="rounded-xl border bg-card p-6">
@@ -71,13 +86,15 @@ export function StudyChart({
           <XAxis
             dataKey="date"
             tickFormatter={(v) => shortDate(v, tab)}
-            tick={{ fontSize: 11 }}
+            tick={{ fontSize: 11, fill: "var(--color-muted-foreground)" }}
             axisLine={false}
             tickLine={false}
           />
           <YAxis
-            tickFormatter={(v) => (v === 0 ? "0" : formatMinutes(v))}
-            tick={{ fontSize: 11 }}
+            ticks={yTicks}
+            domain={[0, yTicks[yTicks.length - 1]]}
+            tickFormatter={(v) => formatMinutes(v)}
+            tick={{ fontSize: 11, fill: "var(--color-muted-foreground)" }}
             axisLine={false}
             tickLine={false}
           />
@@ -86,7 +103,7 @@ export function StudyChart({
             {data.map((entry) => (
               <Cell
                 key={entry.date}
-                fill={entry.seconds > 0 ? "hsl(var(--primary))" : "hsl(var(--muted))"}
+                fill={entry.seconds > 0 ? "var(--color-primary)" : "var(--color-muted)"}
               />
             ))}
           </Bar>

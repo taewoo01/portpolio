@@ -46,7 +46,15 @@ function formatDuration(seconds: number) {
   return [h, m, s].map((v) => String(v).padStart(2, "0")).join(":");
 }
 
-export function FloatContent({ onClose }: { onClose: () => void }) {
+interface FloatContentProps {
+  onClose: () => void;
+  onStart?: (title: string) => void;
+  onPause?: () => void;
+  onResume?: () => void;
+  onStop?: () => void;
+}
+
+export function FloatContent({ onClose, onStart, onPause, onResume, onStop }: FloatContentProps) {
   const [isElectron, setIsElectron] = useState(false);
   const [running, setRunning] = useState(false);
   const [paused, setPaused] = useState(false);
@@ -161,7 +169,7 @@ export function FloatContent({ onClose }: { onClose: () => void }) {
     <div className="flex gap-2" style={{ WebkitAppRegion: "no-drag" }}>
       {!running && !paused && (
         <button
-          onClick={() => inputTitle.trim() && send({ type: "START", title: inputTitle.trim() })}
+          onClick={() => inputTitle.trim() && (onStart ? onStart(inputTitle.trim()) : send({ type: "START", title: inputTitle.trim() }))}
           disabled={!inputTitle.trim()}
           className="rounded-xl bg-blue-600 px-5 py-2 text-sm font-semibold transition-colors hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-40"
         >
@@ -170,7 +178,7 @@ export function FloatContent({ onClose }: { onClose: () => void }) {
       )}
       {running && (
         <button
-          onClick={() => send({ type: "PAUSE" })}
+          onClick={() => onPause ? onPause() : send({ type: "PAUSE" })}
           className="rounded-xl bg-zinc-700 px-4 py-2 text-sm font-semibold transition-colors hover:bg-zinc-600"
         >
           일시정지
@@ -178,7 +186,7 @@ export function FloatContent({ onClose }: { onClose: () => void }) {
       )}
       {paused && (
         <button
-          onClick={() => send({ type: "RESUME" })}
+          onClick={() => onResume ? onResume() : send({ type: "RESUME" })}
           className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold transition-colors hover:bg-blue-500"
         >
           계속
@@ -186,7 +194,7 @@ export function FloatContent({ onClose }: { onClose: () => void }) {
       )}
       {(running || paused) && (
         <button
-          onClick={() => send({ type: "STOP" })}
+          onClick={() => onStop ? onStop() : send({ type: "STOP" })}
           className="rounded-xl bg-red-600/80 px-4 py-2 text-sm font-semibold transition-colors hover:bg-red-500"
         >
           정지
@@ -263,7 +271,7 @@ export function FloatContent({ onClose }: { onClose: () => void }) {
                 value={inputTitle}
                 onChange={(e) => setInputTitle(e.target.value)}
                 onKeyDown={(e) =>
-                  e.key === "Enter" && inputTitle.trim() && send({ type: "START", title: inputTitle.trim() })
+                  e.key === "Enter" && inputTitle.trim() && (onStart ? onStart(inputTitle.trim()) : send({ type: "START", title: inputTitle.trim() }))
                 }
                 placeholder="공부 내용 입력..."
                 style={{ WebkitAppRegion: "no-drag" }}

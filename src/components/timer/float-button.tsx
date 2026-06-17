@@ -6,6 +6,7 @@ import { PictureInPicture2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FloatContent } from "@/components/timer/float-content";
 import { useFloatingTimer } from "@/lib/floating-timer-context";
+import { useTimer } from "@/lib/timer-store";
 
 interface DocumentPiP {
   requestWindow(options?: { width?: number; height?: number; disallowReturnToOpener?: boolean }): Promise<Window>;
@@ -20,6 +21,7 @@ declare global {
 
 export function FloatButton() {
   const { isOpen, open: openInPage, close: closeInPage } = useFloatingTimer();
+  const { start, pause, resume, stop } = useTimer();
   const pipWindowRef = useRef<Window | null>(null);
   const rootRef = useRef<Root | null>(null);
 
@@ -75,10 +77,11 @@ export function FloatButton() {
         rootRef.current = root;
         root.render(
           <FloatContent
-            onClose={() => {
-              root.unmount();
-              pipWindow!.close();
-            }}
+            onClose={() => { root.unmount(); pipWindow!.close(); }}
+            onStart={start}
+            onPause={pause}
+            onResume={resume}
+            onStop={stop}
           />
         );
 
