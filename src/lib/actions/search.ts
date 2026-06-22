@@ -1,6 +1,8 @@
 "use server";
 
 import { prisma } from "@/lib/db";
+import { getUser } from "@/lib/server/auth";
+import { visibilityWhere } from "@/lib/auth";
 import type { DocumentStatus } from "@/generated/prisma/client";
 
 export type WorkspaceFilter = "all" | string; // "all" or workspaceCategoryId
@@ -35,6 +37,8 @@ export async function searchDocumentsAction(
 
   const lowered = trimmed.toLowerCase();
   const categoryWhere = categoryFilter !== "all" ? { workspaceCategoryId: categoryFilter } : {};
+  const currentUser = await getUser();
+  const visibility = visibilityWhere(currentUser);
 
   const [textMatches, tagCandidates] = await Promise.all([
     prisma.document.findMany({
@@ -44,13 +48,14 @@ export async function searchDocumentsAction(
           { title: { contains: trimmed, mode: "insensitive" } },
           { content: { contains: trimmed, mode: "insensitive" } },
         ],
+        ...(visibility ? { AND: [visibility] } : {}),
       },
       orderBy: { updatedAt: "desc" },
       select: SELECT,
       take: 30,
     }),
     prisma.document.findMany({
-      where: { ...categoryWhere, tags: { isEmpty: false } },
+      where: { ...categoryWhere, tags: { isEmpty: false }, ...visibility },
       orderBy: { updatedAt: "desc" },
       select: SELECT,
       take: 100,

@@ -120,6 +120,16 @@ model StudySession {
   @@map("study_sessions")
 }
 
+model LoginAttempt {
+  id          String    @id @default(cuid())
+  identifier  String    @unique
+  attempts    Int       @default(0)
+  lockedUntil DateTime? @map("locked_until")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  @@map("login_attempts")
+}
+
 model AboutProfile {
   id        String   @id @default(cuid())
   owner     String   @unique

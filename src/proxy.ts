@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getIronSession } from "iron-session";
+import { sessionOptions, type SessionData } from "@/lib/session";
 
-const VALID_USERS = ["taewoo", "yujin"];
-
-export function proxy(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   const res = NextResponse.next();
@@ -11,8 +11,8 @@ export function proxy(request: NextRequest) {
   // 인증 불필요 경로
   if (pathname === "/login" || pathname === "/timer/float") return res;
 
-  const user = request.cookies.get("user")?.value;
-  if (!user || !VALID_USERS.includes(user)) {
+  const session = await getIronSession<SessionData>(request, res, sessionOptions);
+  if (!session.user) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
   return res;

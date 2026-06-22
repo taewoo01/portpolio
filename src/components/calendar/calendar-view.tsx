@@ -8,7 +8,7 @@ import { ko } from "date-fns/locale";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import { Button } from "@/components/ui/button";
 import { EventDialog } from "./event-dialog";
-import { USER_LABEL } from "@/lib/auth";
+import { ALL_USERS, USER_LABEL, USER_INITIAL, hiddenUsersFor } from "@/lib/auth";
 import type { TaskWorkspace } from "@/generated/prisma/client";
 import type { EventModel } from "@/generated/prisma/models";
 import type { User } from "@/lib/auth";
@@ -61,6 +61,7 @@ const FILTER_LABELS: Record<FilterUser, string> = {
   all: "전체",
   taewoo: USER_LABEL.taewoo,
   yujin: USER_LABEL.yujin,
+  hoyoung: USER_LABEL.hoyoung,
 };
 
 function getRecurrenceDays(recurrence: string, startAt: Date): number[] {
@@ -137,6 +138,11 @@ export function CalendarView({
     return () => window.removeEventListener("resize", check);
   }, []);
 
+  const filterOptions = useMemo<FilterUser[]>(() => {
+    const hidden = hiddenUsersFor(currentUser);
+    return ["all", ...ALL_USERS.filter((u) => !hidden.includes(u))];
+  }, [currentUser]);
+
   const filteredEvents = useMemo(
     () => filter === "all" ? events : events.filter((e) => e.createdBy === filter),
     [events, filter]
@@ -197,7 +203,7 @@ export function CalendarView({
         <div className="flex items-center gap-2">
           <h2 className="text-lg font-medium">캘린더</h2>
           <div className="flex gap-0 rounded-lg border p-0.5 text-sm">
-            {(["all", "taewoo", "yujin"] as FilterUser[]).map((f) => (
+            {filterOptions.map((f) => (
               <button
                 key={f}
                 onClick={() => setFilter(f)}
@@ -252,7 +258,7 @@ export function CalendarView({
                 )}
                 {event.resource.createdBy && (
                   <span className="shrink-0 opacity-70">
-                    {event.resource.createdBy === "taewoo" ? "T" : "Y"}
+                    {USER_INITIAL[event.resource.createdBy as User]}
                   </span>
                 )}
               </div>

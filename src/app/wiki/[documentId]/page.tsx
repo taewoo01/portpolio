@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { getUser } from "@/lib/server/auth";
+import { canView } from "@/lib/auth";
 import { DocumentEditor } from "@/components/wiki/document-editor";
 
 export default async function WikiDocumentPage({
@@ -14,7 +15,7 @@ export default async function WikiDocumentPage({
     getUser(),
   ]);
 
-  if (!document) notFound();
+  if (!document || !canView(currentUser, document.createdBy)) notFound();
 
   const blogPost = await prisma.blogPost.findFirst({ where: { documentId } });
 

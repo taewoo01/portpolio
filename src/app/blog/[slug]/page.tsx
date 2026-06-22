@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPostBySlug } from "@/lib/blog";
+import { getUser } from "@/lib/server/auth";
 import { MarkdownPreview } from "@/components/wiki/markdown-preview";
 import { workspaceBadgeStyle } from "@/lib/wiki";
 import { USER_LABEL } from "@/lib/auth";
@@ -14,7 +15,8 @@ export default async function BlogPostPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const post = await getPostBySlug(decodeURIComponent(slug));
+  const currentUser = await getUser();
+  const post = await getPostBySlug(decodeURIComponent(slug), currentUser);
 
   if (!post || !post.published) notFound();
 

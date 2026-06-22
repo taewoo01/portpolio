@@ -5,10 +5,10 @@ import { CalendarSection } from "@/components/calendar/calendar-section";
 
 export default async function CalendarPage() {
   const now = new Date();
-  const [events, todos, currentUser] = await Promise.all([
-    getEventsInRange(subMonths(now, 2), addMonths(now, 3)),
-    getAllTodos(),
-    getUser(),
+  const currentUser = await getUser();
+  const [events, todos] = await Promise.all([
+    getEventsInRange(subMonths(now, 2), addMonths(now, 3), currentUser),
+    getAllTodos(currentUser),
   ]);
 
   return (

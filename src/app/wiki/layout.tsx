@@ -1,11 +1,15 @@
 import { prisma } from "@/lib/db";
 import { getUser } from "@/lib/server/auth";
+import { visibilityWhere } from "@/lib/auth";
 import { buildFolderTree } from "@/lib/wiki";
 import { WikiLayout } from "@/components/wiki/wiki-layout";
 
 export default async function Layout({ children }: { children: React.ReactNode }) {
-  const [folders, documents, currentUser, categories] = await Promise.all([
+  const currentUser = await getUser();
+  const visibility = visibilityWhere(currentUser);
+  const [folders, documents, categories] = await Promise.all([
     prisma.folder.findMany({
+      where: visibility,
       select: {
         id: true,
         name: true,
@@ -16,6 +20,7 @@ export default async function Layout({ children }: { children: React.ReactNode }
       orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
     }),
     prisma.document.findMany({
+      where: visibility,
       select: {
         id: true,
         title: true,
@@ -26,7 +31,6 @@ export default async function Layout({ children }: { children: React.ReactNode }
       },
       orderBy: { updatedAt: "desc" },
     }),
-    getUser(),
     prisma.workspaceCategory.findMany({ orderBy: { sortOrder: "asc" } }),
   ]);
   const tree = buildFolderTree(folders, documents);

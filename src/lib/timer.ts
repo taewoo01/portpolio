@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/db";
+import { visibilityWhere } from "@/lib/auth";
+import type { User } from "@/lib/auth";
 
 function todayRange() {
   const start = new Date();
@@ -23,11 +25,12 @@ export async function getActiveSession() {
   });
 }
 
-export async function getTodayActivity() {
+export async function getTodayActivity(currentUser: User | null = null) {
   const { start, end } = todayRange();
+  const visibility = visibilityWhere(currentUser);
   const [documents, blogPosts] = await Promise.all([
     prisma.document.findMany({
-      where: { updatedAt: { gte: start, lte: end } },
+      where: { updatedAt: { gte: start, lte: end }, ...visibility },
       orderBy: { updatedAt: "desc" },
       select: {
         id: true,
@@ -37,7 +40,7 @@ export async function getTodayActivity() {
       },
     }),
     prisma.blogPost.findMany({
-      where: { published: true, publishedAt: { gte: start, lte: end } },
+      where: { published: true, publishedAt: { gte: start, lte: end }, ...visibility },
       orderBy: { publishedAt: "desc" },
       select: { id: true, title: true, slug: true, publishedAt: true },
     }),

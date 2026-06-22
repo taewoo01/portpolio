@@ -3,6 +3,7 @@ import { TimerWidget } from "@/components/timer/timer-widget";
 import { FloatButton } from "@/components/timer/float-button";
 import { TodayActivity } from "@/components/timer/today-activity";
 import { StudyChart } from "@/components/timer/study-chart";
+import { getUser } from "@/lib/server/auth";
 import {
   getActiveSession,
   getTodaySessions,
@@ -14,10 +15,11 @@ import {
 export const metadata = { title: "타이머" };
 
 export default async function TimerPage() {
+  const currentUser = await getUser();
   const [active, sessions, { documents, blogPosts }, weekly, monthly] = await Promise.all([
     getActiveSession(),
     getTodaySessions(),
-    getTodayActivity(),
+    getTodayActivity(currentUser),
     getWeeklyStats(),
     getMonthlyStats(),
   ]);
