@@ -5,6 +5,7 @@ const GREETING: Record<NonNullable<User>, string> = {
   taewoo: "안녕하세요, 태우님 👋",
   yujin: "안녕하세요, 유진님 👋",
   hoyoung: "안녕하세요, 호영님 👋",
+  donghyun: "안녕하세요, 동현님 👋",
 };
 
 export function HeroSection({ user }: { user: User | null }) {

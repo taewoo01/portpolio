@@ -59,9 +59,7 @@ type FilterUser = "all" | User;
 
 const FILTER_LABELS: Record<FilterUser, string> = {
   all: "전체",
-  taewoo: USER_LABEL.taewoo,
-  yujin: USER_LABEL.yujin,
-  hoyoung: USER_LABEL.hoyoung,
+  ...USER_LABEL,
 };
 
 function getRecurrenceDays(recurrence: string, startAt: Date): number[] {

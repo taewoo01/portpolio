@@ -41,6 +41,16 @@ const DEFAULTS: Record<string, { name: string; role: string; bio: string[]; skil
       { label: "Email", href: "mailto:you@example.com" },
     ],
   },
+  donghyun: {
+    name: USER_LABEL.donghyun,
+    role: "팀원",
+    bio: ["이 문장들은 placeholder입니다.", "편집 버튼을 눌러 직접 수정할 수 있습니다."],
+    skills: [],
+    links: [
+      { label: "Blog", href: "/blog" },
+      { label: "Email", href: "mailto:you@example.com" },
+    ],
+  },
 };
 
 export default async function AboutPage() {

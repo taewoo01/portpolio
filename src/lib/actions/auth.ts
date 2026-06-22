@@ -11,11 +11,16 @@ const MAX_ATTEMPTS = 5;
 const LOCKOUT_MS = 15 * 60 * 1000;
 
 function getPinMap(): Record<string, User> {
-  const { PIN_TAEWOO, PIN_YUJIN, PIN_HOYOUNG } = process.env;
-  if (!PIN_TAEWOO || !PIN_YUJIN || !PIN_HOYOUNG) {
-    throw new Error("PIN_TAEWOO / PIN_YUJIN / PIN_HOYOUNG 환경변수가 설정되지 않았습니다.");
+  const { PIN_TAEWOO, PIN_YUJIN, PIN_HOYOUNG, PIN_DONGHYUN } = process.env;
+  if (!PIN_TAEWOO || !PIN_YUJIN || !PIN_HOYOUNG || !PIN_DONGHYUN) {
+    throw new Error("PIN_TAEWOO / PIN_YUJIN / PIN_HOYOUNG / PIN_DONGHYUN 환경변수가 설정되지 않았습니다.");
   }
-  return { [PIN_TAEWOO]: "taewoo", [PIN_YUJIN]: "yujin", [PIN_HOYOUNG]: "hoyoung" };
+  return {
+    [PIN_TAEWOO]: "taewoo",
+    [PIN_YUJIN]: "yujin",
+    [PIN_HOYOUNG]: "hoyoung",
+    [PIN_DONGHYUN]: "donghyun",
+  };
 }
 
 async function getClientIp(): Promise<string> {
