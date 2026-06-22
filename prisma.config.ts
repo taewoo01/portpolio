@@ -10,6 +10,7 @@ export default defineConfig({
     seed: "tsx prisma/seed.ts",
   },
   datasource: {
-    url: process.env["DATABASE_URL"],
+    // 마이그레이션은 direct(non-pooler) 커넥션이 필요함 (Neon pooler는 advisory lock 타임아웃 발생, P1002)
+    url: process.env["DIRECT_URL"] ?? process.env["DATABASE_URL"],
   },
 });
