@@ -7,9 +7,10 @@ import { WikiLayout } from "@/components/wiki/wiki-layout";
 export default async function Layout({ children }: { children: React.ReactNode }) {
   const currentUser = await getUser();
   const visibility = visibilityWhere(currentUser);
+  const folderVisibility = folderVisibilityWhere(currentUser);
   const [folders, documents, categories] = await Promise.all([
     prisma.folder.findMany({
-      where: folderVisibilityWhere(currentUser),
+      where: folderVisibility,
       select: {
         id: true,
         name: true,
@@ -21,12 +22,14 @@ export default async function Layout({ children }: { children: React.ReactNode }
       orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
     }),
     prisma.document.findMany({
-      where: {
-        OR: [
-          { folderId: null, ...visibility },
-          { folder: folderVisibilityWhere(currentUser) },
-        ],
-      },
+      where: folderVisibility === undefined
+        ? undefined
+        : {
+            OR: [
+              { folderId: null, ...visibility },
+              { folder: folderVisibility },
+            ],
+          },
       select: {
         id: true,
         title: true,
