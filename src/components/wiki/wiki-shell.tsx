@@ -24,7 +24,7 @@ export function WikiShell({
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
 
   return (
-    <WikiActionsProvider categories={[]} basePath={basePath}>
+    <WikiActionsProvider categories={[]} basePath={basePath} currentUser={currentUser}>
       <div className="flex gap-6">
         <div className="hidden md:block">
           <FolderSidebar

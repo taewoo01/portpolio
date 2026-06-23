@@ -25,6 +25,7 @@ export type FolderTreeNode = {
   id: string;
   name: string;
   createdBy: string | null;
+  visibleTo: string[];
   workspaceCategory: WorkspaceCategory;
   children: FolderTreeNode[];
   documents: WikiDocSummary[];
@@ -54,7 +55,7 @@ export const STATUS_BADGE_CLASS: Record<DocumentStatus, string> = {
 };
 
 export function buildFolderTree(
-  folders: { id: string; name: string; parentId: string | null; createdBy: string | null; workspaceCategory: WorkspaceCategory }[],
+  folders: { id: string; name: string; parentId: string | null; createdBy: string | null; visibleTo: string[]; workspaceCategory: WorkspaceCategory }[],
   documents: { id: string; title: string; folderId: string | null; status: DocumentStatus; createdBy: string | null; workspaceCategory: WorkspaceCategory }[]
 ): FolderTree {
   const nodeById = new Map<string, FolderTreeNode>();
@@ -63,6 +64,7 @@ export function buildFolderTree(
       id: folder.id,
       name: folder.name,
       createdBy: folder.createdBy,
+      visibleTo: folder.createdBy ? folder.visibleTo : [],
       workspaceCategory: folder.workspaceCategory,
       children: [],
       documents: [],

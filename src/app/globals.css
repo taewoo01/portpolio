@@ -248,3 +248,58 @@
   animation: aurora-shift 18s ease infinite;
 }
 
+@media print {
+  :root,
+  .dark {
+    --background: oklch(0.99 0 0);
+    --foreground: oklch(0.13 0.005 260);
+    --card: oklch(1 0 0);
+    --card-foreground: oklch(0.13 0.005 260);
+    --muted: oklch(0.96 0.003 260);
+    --muted-foreground: oklch(0.35 0.01 260);
+    --accent: oklch(0.95 0.008 255);
+    --accent-foreground: oklch(0.25 0.01 260);
+    --border: oklch(0.85 0.004 260);
+  }
+
+  html,
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  body * {
+    visibility: hidden !important;
+  }
+
+  #print-area,
+  #print-area * {
+    visibility: visible !important;
+  }
+
+  #print-area {
+    position: absolute !important;
+    inset: 0 !important;
+    margin: 0 !important;
+    max-width: none !important;
+  }
+
+  p,
+  li,
+  blockquote,
+  figure,
+  table,
+  .shiki,
+  pre,
+  img {
+    break-inside: avoid;
+    orphans: 3;
+    widows: 3;
+  }
+
+  a {
+    color: #000 !important;
+    text-decoration: underline !important;
+  }
+}
+

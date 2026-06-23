@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useWikiActions } from "./wiki-actions-provider";
 import { STATUS_DOT_CLASS, STATUS_LABEL, workspaceBadgeStyle } from "@/lib/wiki";
-import { USER_LABEL } from "@/lib/auth";
+import { USER_LABEL, isOwner } from "@/lib/auth";
 import type { FolderTree, FolderTreeNode, WikiDocSummary, WorkspaceCategory } from "@/lib/wiki";
 import type { User } from "@/lib/auth";
 
@@ -240,7 +240,7 @@ function FolderNodeItem({
   const { isPending, openCreateFolder, openCreateDocument, openRenameFolder, openDeleteFolder } =
     useWikiActions();
 
-  const canEdit = !node.createdBy || node.createdBy === currentUser;
+  const canEdit = isOwner(currentUser, node.createdBy ?? null);
 
   function withStop(fn: () => void) {
     return (event: React.MouseEvent) => {
@@ -252,7 +252,7 @@ function FolderNodeItem({
 
   function handleRename(event: React.MouseEvent) {
     event.stopPropagation();
-    openRenameFolder(node.id, node.name, node.workspaceCategory.id);
+    openRenameFolder(node.id, node.name, node.workspaceCategory.id, node.visibleTo);
   }
 
   function handleDelete(event: React.MouseEvent) {
@@ -284,7 +284,7 @@ function FolderNodeItem({
             {node.workspaceCategory.name}
           </span>
         )}
-        <span className="ml-auto flex shrink-0 items-center gap-0.5">
+        <span className="ml-auto flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
           <button
             type="button"
             title="하위 폴더 추가"

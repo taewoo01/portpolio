@@ -18,7 +18,7 @@ export default async function Home() {
       getRecentDocuments(5, user),
       getInProgressDocuments(10, user),
       getRecentBlogPosts(3, user),
-      getSiteStats(),
+      getSiteStats(user),
     ]);
 
   return (

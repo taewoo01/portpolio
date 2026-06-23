@@ -8,6 +8,7 @@ import { USER_LABEL } from "@/lib/auth";
 import type { User } from "@/lib/auth";
 import { parseHeadings } from "@/lib/slug";
 import { TableOfContents } from "@/components/blog/table-of-contents";
+import { PrintButton } from "@/components/blog/print-button";
 
 export default async function BlogPostPage({
   params,
@@ -29,18 +30,21 @@ export default async function BlogPostPage({
   return (
     <div className="mx-auto max-w-5xl">
       <div className="flex gap-12">
-        <article className="min-w-0 flex-1 flex flex-col gap-6">
-          <Link href={backHref} className="text-sm text-muted-foreground hover:text-foreground">
+        <article id="print-area" className="min-w-0 flex-1 flex flex-col gap-6">
+          <Link href={backHref} className="print:hidden text-sm text-muted-foreground hover:text-foreground">
             ← 목록으로
           </Link>
 
           <header className="flex flex-col gap-2">
-            <span
-              className="inline-flex w-fit shrink-0 items-center rounded-full px-2 py-0.5 text-xs font-medium"
-              style={workspaceBadgeStyle(post.workspaceCategory.color)}
-            >
-              {post.workspaceCategory.name}
-            </span>
+            <div className="flex items-start justify-between gap-4">
+              <span
+                className="inline-flex w-fit shrink-0 items-center rounded-full px-2 py-0.5 text-xs font-medium"
+                style={workspaceBadgeStyle(post.workspaceCategory.color)}
+              >
+                {post.workspaceCategory.name}
+              </span>
+              <PrintButton />
+            </div>
             <h1 className="text-3xl font-semibold">{post.title}</h1>
             <p className="text-sm text-muted-foreground">
               {post.createdBy && (
@@ -52,12 +56,16 @@ export default async function BlogPostPage({
 
           <MarkdownPreview content={post.content} />
 
-          <Link href={backHref} className="text-sm text-muted-foreground hover:text-foreground">
+          <Link href={backHref} className="print:hidden text-sm text-muted-foreground hover:text-foreground">
             ← 목록으로
           </Link>
+
+          <footer className="hidden print:block mt-12 border-t pt-4 text-xs text-muted-foreground">
+            portpolio · /blog/{post.slug}
+          </footer>
         </article>
 
-        <aside className="hidden lg:block w-52 shrink-0">
+        <aside className="print:hidden hidden lg:block w-52 shrink-0">
           <TableOfContents headings={headings} />
         </aside>
       </div>

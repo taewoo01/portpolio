@@ -24,7 +24,7 @@ export function WikiLayout({
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
 
   return (
-    <WikiActionsProvider categories={categories} basePath="/wiki">
+    <WikiActionsProvider categories={categories} basePath="/wiki" currentUser={currentUser}>
       <div className="flex gap-6">
         <div className="hidden md:block">
           <FolderSidebar

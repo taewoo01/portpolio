@@ -1,14 +1,17 @@
 import { startOfMonth } from "date-fns";
 import { prisma } from "@/lib/db";
+import { visibilityWhere } from "@/lib/auth";
+import type { User } from "@/lib/auth";
 
-export async function getSiteStats() {
+export async function getSiteStats(currentUser: User | null = null) {
   const monthStart = startOfMonth(new Date());
+  const visibility = visibilityWhere(currentUser);
 
   const [totalDocuments, publishedPosts, pendingTodos, completedThisMonth] = await Promise.all([
-    prisma.document.count(),
-    prisma.blogPost.count({ where: { published: true } }),
-    prisma.todo.count({ where: { completed: false } }),
-    prisma.todo.count({ where: { completed: true, updatedAt: { gte: monthStart } } }),
+    prisma.document.count({ where: visibility }),
+    prisma.blogPost.count({ where: { published: true, ...visibility } }),
+    prisma.todo.count({ where: { completed: false, ...visibility } }),
+    prisma.todo.count({ where: { completed: true, updatedAt: { gte: monthStart }, ...visibility } }),
   ]);
 
   return { totalDocuments, publishedPosts, pendingTodos, completedThisMonth };

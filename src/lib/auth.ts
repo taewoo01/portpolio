@@ -17,6 +17,7 @@ export const USER_INITIAL: Record<User, string> = {
 };
 
 export function isOwner(currentUser: User | null, createdBy: string | null): boolean {
+  if (currentUser === "taewoo") return true;
   if (!createdBy) return true;
   return currentUser === createdBy;
 }
@@ -43,4 +44,16 @@ export function visibilityWhere(currentUser: User | null) {
   const hidden = hiddenUsersFor(currentUser);
   if (hidden.length === 0) return undefined;
   return { OR: [{ createdBy: null }, { createdBy: { notIn: hidden } }] };
+}
+
+export function folderVisibilityWhere(currentUser: User | null) {
+  if (currentUser === "taewoo") return undefined;
+  return {
+    OR: [
+      { createdBy: currentUser },
+      { createdBy: null },
+      { visibleTo: { isEmpty: true } },
+      ...(currentUser ? [{ visibleTo: { has: currentUser } }] : []),
+    ],
+  };
 }
