@@ -11,22 +11,26 @@ import { TableOfContents } from "@/components/blog/table-of-contents";
 
 export default async function BlogPostPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ from?: string }>;
 }) {
   const { slug } = await params;
+  const { from } = await searchParams;
   const currentUser = await getUser();
   const post = await getPostBySlug(decodeURIComponent(slug), currentUser);
 
   if (!post || !post.published) notFound();
 
   const headings = parseHeadings(post.content);
+  const backHref = from ? `/blog?category=${from}` : "/blog";
 
   return (
     <div className="mx-auto max-w-5xl">
       <div className="flex gap-12">
         <article className="min-w-0 flex-1 flex flex-col gap-6">
-          <Link href="/blog" className="text-sm text-muted-foreground hover:text-foreground">
+          <Link href={backHref} className="text-sm text-muted-foreground hover:text-foreground">
             ← 목록으로
           </Link>
 
@@ -48,7 +52,7 @@ export default async function BlogPostPage({
 
           <MarkdownPreview content={post.content} />
 
-          <Link href="/blog" className="text-sm text-muted-foreground hover:text-foreground">
+          <Link href={backHref} className="text-sm text-muted-foreground hover:text-foreground">
             ← 목록으로
           </Link>
         </article>

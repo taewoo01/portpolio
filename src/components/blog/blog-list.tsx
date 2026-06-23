@@ -31,12 +31,19 @@ function summarize(post: { excerpt: string | null; content: string }) {
 export function BlogList({
   posts,
   categories,
+  initialCategory = "all",
 }: {
   posts: Post[];
   categories: Category[];
+  initialCategory?: Filter;
 }) {
-  const [filter, setFilter] = useState<Filter>("all");
+  const [filter, setFilter] = useState<Filter>(initialCategory);
   const filtered = filter === "all" ? posts : posts.filter((p) => p.workspaceCategoryId === filter);
+
+  function selectFilter(f: Filter) {
+    setFilter(f);
+    window.history.replaceState(null, "", f === "all" ? "/blog" : `/blog?category=${f}`);
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -52,7 +59,7 @@ export function BlogList({
           return (
             <button
               key={f}
-              onClick={() => setFilter(f)}
+              onClick={() => selectFilter(f)}
               className="relative rounded-md px-3 py-1.5 transition-colors duration-150"
             >
               {filter === f && (
@@ -82,7 +89,7 @@ export function BlogList({
           {filtered.map((post) => (
             <li key={post.id}>
               <Link
-                href={`/blog/${post.slug}`}
+                href={filter === "all" ? `/blog/${post.slug}` : `/blog/${post.slug}?from=${filter}`}
                 className="flex flex-col gap-1.5 rounded-md px-3 py-4 transition-colors hover:bg-accent"
               >
                 <div className="flex items-center gap-2">
