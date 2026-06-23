@@ -57,3 +57,13 @@ export function folderVisibilityWhere(currentUser: User | null) {
     ],
   };
 }
+
+export function documentVisibilityWhere(currentUser: User | null) {
+  if (currentUser === "taewoo") return undefined;
+  return {
+    OR: [
+      { folderId: null, ...visibilityWhere(currentUser) },
+      { folder: folderVisibilityWhere(currentUser) },
+    ],
+  };
+}

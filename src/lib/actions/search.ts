@@ -2,7 +2,7 @@
 
 import { prisma } from "@/lib/db";
 import { getUser } from "@/lib/server/auth";
-import { visibilityWhere } from "@/lib/auth";
+import { documentVisibilityWhere } from "@/lib/auth";
 import type { DocumentStatus } from "@/generated/prisma/client";
 
 export type WorkspaceFilter = "all" | string; // "all" or workspaceCategoryId
@@ -38,7 +38,7 @@ export async function searchDocumentsAction(
   const lowered = trimmed.toLowerCase();
   const categoryWhere = categoryFilter !== "all" ? { workspaceCategoryId: categoryFilter } : {};
   const currentUser = await getUser();
-  const visibility = visibilityWhere(currentUser);
+  const visibility = documentVisibilityWhere(currentUser);
 
   const [textMatches, tagCandidates] = await Promise.all([
     prisma.document.findMany({
