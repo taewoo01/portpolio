@@ -9,6 +9,7 @@ import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import rehypeKatex from "rehype-katex";
 import "katex/dist/katex.min.css";
 import { codeToHtml } from "shiki";
+import { XIcon } from "lucide-react";
 
 const highlightCache = new Map<string, string>();
 
@@ -55,7 +56,42 @@ function CodeBlock({ className, children }: { className?: string; children?: Rea
   );
 }
 
-export function MarkdownPreview({ content }: { content: string }) {
+function ImageLightbox({ src, alt, onClose }: { src: string; alt: string; onClose: () => void }) {
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm transition-opacity"
+      onClick={onClose}
+    >
+      <button
+        type="button"
+        onClick={onClose}
+        aria-label="닫기"
+        className="absolute top-4 right-4 rounded-full bg-white/10 p-2 text-white transition-colors hover:bg-white/20"
+      >
+        <XIcon className="size-5" />
+      </button>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={src}
+        alt={alt}
+        className="max-h-full max-w-full rounded-xl object-contain shadow-2xl"
+        onClick={(event) => event.stopPropagation()}
+      />
+    </div>
+  );
+}
+
+export function MarkdownPreview({ content, lightbox = false }: { content: string; lightbox?: boolean }) {
+  const [zoomed, setZoomed] = useState<{ src: string; alt: string } | null>(null);
+
   if (!content.trim()) {
     return <p className="text-sm text-muted-foreground">내용이 없습니다.</p>;
   }
@@ -77,7 +113,7 @@ export function MarkdownPreview({ content }: { content: string }) {
   }
 
   return (
-    <div className="prose prose-neutral dark:prose-invert max-w-none prose-pre:bg-transparent prose-pre:p-0">
+    <div className="prose prose-neutral dark:prose-invert max-w-none prose-pre:bg-transparent prose-pre:p-0 prose-img:inline-block">
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkMath]}
         rehypePlugins={[rehypeRaw, [rehypeSanitize, defaultSchema], rehypeKatex]}
@@ -94,10 +130,29 @@ export function MarkdownPreview({ content }: { content: string }) {
           h1({ children }) { return <h1 id={headingId(children)}>{children}</h1>; },
           h2({ children }) { return <h2 id={headingId(children)}>{children}</h2>; },
           h3({ children }) { return <h3 id={headingId(children)}>{children}</h3>; },
+          img({ src, alt }) {
+            const url = typeof src === "string" ? src : undefined;
+            if (!lightbox || !url) {
+              // eslint-disable-next-line @next/next/no-img-element
+              return <img src={url} alt={alt ?? ""} />;
+            }
+            return (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={url}
+                alt={alt ?? ""}
+                className="cursor-zoom-in transition-opacity hover:opacity-90"
+                onClick={() => setZoomed({ src: url, alt: alt ?? "" })}
+              />
+            );
+          },
         }}
       >
         {content}
       </ReactMarkdown>
+      {zoomed && (
+        <ImageLightbox src={zoomed.src} alt={zoomed.alt} onClose={() => setZoomed(null)} />
+      )}
     </div>
   );
 }

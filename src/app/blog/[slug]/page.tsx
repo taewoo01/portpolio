@@ -54,7 +54,7 @@ export default async function BlogPostPage({
             </p>
           </header>
 
-          <MarkdownPreview content={post.content} />
+          <MarkdownPreview content={post.content} lightbox />
 
           <Link href={backHref} className="print:hidden text-sm text-muted-foreground hover:text-foreground">
             ← 목록으로
