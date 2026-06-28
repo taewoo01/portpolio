@@ -1,8 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
+import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  useDraggable,
+  useDroppable,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type DragStartEvent,
+} from "@dnd-kit/core";
 import {
   ChevronRight,
   ChevronDown,
@@ -12,14 +23,41 @@ import {
   Pencil,
   Trash2,
   Plus,
+  FileText,
+  ArrowUpToLine,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useWikiActions } from "./wiki-actions-provider";
+import { moveFolderAction } from "@/lib/actions/folders";
+import { moveDocumentAction } from "@/lib/actions/documents";
 import { STATUS_DOT_CLASS, STATUS_LABEL, workspaceBadgeStyle } from "@/lib/wiki";
 import { USER_LABEL, isOwner } from "@/lib/auth";
 import type { FolderTree, FolderTreeNode, WikiDocSummary, WorkspaceCategory } from "@/lib/wiki";
 import type { User } from "@/lib/auth";
+
+function findFolderNode(nodes: FolderTreeNode[], id: string): FolderTreeNode | undefined {
+  for (const node of nodes) {
+    if (node.id === id) return node;
+    const found = findFolderNode(node.children, id);
+    if (found) return found;
+  }
+  return undefined;
+}
+
+function collectDescendantFolderIds(node: FolderTreeNode): Set<string> {
+  const ids = new Set<string>();
+  function walk(n: FolderTreeNode) {
+    for (const child of n.children) {
+      ids.add(child.id);
+      walk(child);
+    }
+  }
+  walk(node);
+  return ids;
+}
+
+type DragLabel = { kind: "folder" | "document"; name: string };
 
 export function FolderSidebar({
   categories,
@@ -38,7 +76,12 @@ export function FolderSidebar({
   selectedCategoryId: string | null;
   onCategorySelect: (id: string | null) => void;
 }) {
+  const router = useRouter();
   const { isPending, openCreateFolder, openCreateDocument, openCreateCategory, openEditCategory, openDeleteCategory } = useWikiActions();
+  const [, startMove] = useTransition();
+  const [dragLabel, setDragLabel] = useState<DragLabel | null>(null);
+
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
 
   const showBadge = selectedCategoryId === null;
 
@@ -51,121 +94,212 @@ export function FolderSidebar({
 
   const isEmpty = displayFolders.length === 0 && displayRootDocs.length === 0;
 
+  function handleDragStart(event: DragStartEvent) {
+    const data = event.active.data.current as { kind: "folder" | "document"; name: string } | undefined;
+    if (data) setDragLabel({ kind: data.kind, name: data.name });
+  }
+
+  function handleDragEnd(event: DragEndEvent) {
+    setDragLabel(null);
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const activeData = active.data.current as
+      | { kind: "folder"; folderId: string; categoryId: string }
+      | { kind: "document"; documentId: string; categoryId: string }
+      | undefined;
+    const overData = over.data.current as
+      | { kind: "folder"; folderId: string; categoryId: string }
+      | { kind: "root" }
+      | undefined;
+    if (!activeData || !overData) return;
+
+    if (overData.kind === "folder" && activeData.categoryId !== overData.categoryId) {
+      alert("같은 카테고리 안에서만 이동할 수 있습니다.");
+      return;
+    }
+
+    const targetFolderId = overData.kind === "folder" ? overData.folderId : null;
+
+    if (activeData.kind === "document") {
+      startMove(async () => {
+        const result = await moveDocumentAction(activeData.documentId, targetFolderId);
+        if (result?.error) { alert(result.error); return; }
+        router.refresh();
+      });
+      return;
+    }
+
+    if (activeData.folderId === targetFolderId) return;
+    if (targetFolderId) {
+      const draggedNode = findFolderNode(tree.folders, activeData.folderId);
+      if (draggedNode && collectDescendantFolderIds(draggedNode).has(targetFolderId)) {
+        alert("폴더를 하위 폴더 안으로 이동할 수 없습니다.");
+        return;
+      }
+    }
+
+    startMove(async () => {
+      const result = await moveFolderAction(activeData.folderId, targetFolderId);
+      if (result?.error) { alert(result.error); return; }
+      router.refresh();
+    });
+  }
+
   return (
-    <aside className="w-[240px] shrink-0 border-r pr-3 flex flex-col gap-3">
-      {/* Category list */}
-      <div className="flex flex-col gap-0.5">
-        <button
-          onClick={() => onCategorySelect(null)}
-          className={cn(
-            "flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm transition-colors",
-            selectedCategoryId === null
-              ? "bg-accent font-semibold text-accent-foreground"
-              : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
-          )}
-        >
-          전체
-        </button>
-        {categories.map((cat) => (
-          <div key={cat.id} className="flex items-center">
-            <button
-              onClick={() => onCategorySelect(cat.id)}
-              className={cn(
-                "flex flex-1 items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm transition-colors",
-                selectedCategoryId === cat.id
-                  ? "bg-accent font-semibold text-accent-foreground"
-                  : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
-              )}
-            >
-              <span className="size-2 shrink-0 rounded-full" style={{ backgroundColor: cat.color }} />
-              {cat.name}
-            </button>
-            <div className="flex shrink-0 gap-0.5">
+    <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+      <aside className="relative w-[240px] shrink-0 border-r pr-3 flex flex-col gap-3">
+        {/* Category list */}
+        <div className="flex flex-col gap-0.5">
+          <button
+            onClick={() => onCategorySelect(null)}
+            className={cn(
+              "flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm transition-colors",
+              selectedCategoryId === null
+                ? "bg-accent font-semibold text-accent-foreground"
+                : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+            )}
+          >
+            전체
+          </button>
+          {categories.map((cat) => (
+            <div key={cat.id} className="flex items-center">
               <button
-                type="button"
-                title="수정"
-                onClick={() => openEditCategory(cat.id, cat.name, cat.color)}
-                disabled={isPending}
-                className="rounded p-0.5 text-muted-foreground hover:text-foreground"
+                onClick={() => onCategorySelect(cat.id)}
+                className={cn(
+                  "flex flex-1 items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm transition-colors",
+                  selectedCategoryId === cat.id
+                    ? "bg-accent font-semibold text-accent-foreground"
+                    : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+                )}
               >
-                <Pencil className="size-3" />
+                <span className="size-2 shrink-0 rounded-full" style={{ backgroundColor: cat.color }} />
+                {cat.name}
               </button>
-              <button
-                type="button"
-                title="삭제"
-                onClick={() => openDeleteCategory(cat.id, cat.name)}
-                disabled={isPending}
-                className="rounded p-0.5 text-muted-foreground hover:text-destructive"
-              >
-                <Trash2 className="size-3" />
-              </button>
+              <div className="flex shrink-0 gap-0.5">
+                <button
+                  type="button"
+                  title="수정"
+                  onClick={() => openEditCategory(cat.id, cat.name, cat.color)}
+                  disabled={isPending}
+                  className="rounded p-0.5 text-muted-foreground hover:text-foreground"
+                >
+                  <Pencil className="size-3" />
+                </button>
+                <button
+                  type="button"
+                  title="삭제"
+                  onClick={() => openDeleteCategory(cat.id, cat.name)}
+                  disabled={isPending}
+                  className="rounded p-0.5 text-muted-foreground hover:text-destructive"
+                >
+                  <Trash2 className="size-3" />
+                </button>
+              </div>
             </div>
+          ))}
+          <button
+            onClick={openCreateCategory}
+            disabled={isPending}
+            className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs text-muted-foreground/70 hover:text-muted-foreground transition-colors"
+          >
+            <Plus className="size-3" />
+            카테고리 추가
+          </button>
+        </div>
+
+        <div className="border-t" />
+
+        {/* Folder/doc actions */}
+        <div className="flex items-center justify-end gap-1">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            title="새 폴더"
+            onClick={() => openCreateFolder(null)}
+            disabled={isPending}
+          >
+            <FolderPlus className="size-4" />
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            title="새 문서"
+            onClick={() => openCreateDocument(null)}
+            disabled={isPending}
+          >
+            <FilePlus className="size-4" />
+          </Button>
+        </div>
+
+        <nav className="space-y-0.5 text-sm">
+          {displayFolders.map((node) => (
+            <FolderNodeItem
+              key={node.id}
+              basePath={basePath}
+              node={node}
+              depth={0}
+              currentUser={currentUser}
+              onNavigate={onNavigate}
+              showBadge={showBadge}
+            />
+          ))}
+          {displayRootDocs.map((doc) => (
+            <DocumentLink
+              key={doc.id}
+              basePath={basePath}
+              doc={doc}
+              depth={0}
+              currentUser={currentUser}
+              onNavigate={onNavigate}
+              showBadge={showBadge}
+            />
+          ))}
+          {isEmpty && (
+            <p className="px-2 py-1 text-xs text-muted-foreground">폴더나 문서가 없습니다.</p>
+          )}
+        </nav>
+
+        <RootDropZone visible={dragLabel !== null} />
+      </aside>
+
+      <DragOverlay>
+        {dragLabel && (
+          <div className="flex items-center gap-1.5 rounded-md border bg-popover px-2.5 py-1.5 text-sm shadow-md">
+            {dragLabel.kind === "folder" ? (
+              <FolderIcon className="size-3.5 shrink-0 text-muted-foreground" />
+            ) : (
+              <FileText className="size-3.5 shrink-0 text-muted-foreground" />
+            )}
+            <span className="truncate">{dragLabel.name}</span>
           </div>
-        ))}
-        <button
-          onClick={openCreateCategory}
-          disabled={isPending}
-          className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs text-muted-foreground/70 hover:text-muted-foreground transition-colors"
-        >
-          <Plus className="size-3" />
-          카테고리 추가
-        </button>
-      </div>
-
-      <div className="border-t" />
-
-      {/* Folder/doc actions */}
-      <div className="flex items-center justify-end gap-1">
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          title="새 폴더"
-          onClick={() => openCreateFolder(null)}
-          disabled={isPending}
-        >
-          <FolderPlus className="size-4" />
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          title="새 문서"
-          onClick={() => openCreateDocument(null)}
-          disabled={isPending}
-        >
-          <FilePlus className="size-4" />
-        </Button>
-      </div>
-
-      <nav className="space-y-0.5 text-sm">
-        {displayFolders.map((node) => (
-          <FolderNodeItem
-            key={node.id}
-            basePath={basePath}
-            node={node}
-            depth={0}
-            currentUser={currentUser}
-            onNavigate={onNavigate}
-            showBadge={showBadge}
-          />
-        ))}
-        {displayRootDocs.map((doc) => (
-          <DocumentLink
-            key={doc.id}
-            basePath={basePath}
-            doc={doc}
-            depth={0}
-            currentUser={currentUser}
-            onNavigate={onNavigate}
-            showBadge={showBadge}
-          />
-        ))}
-        {isEmpty && (
-          <p className="px-2 py-1 text-xs text-muted-foreground">폴더나 문서가 없습니다.</p>
         )}
-      </nav>
-    </aside>
+      </DragOverlay>
+    </DndContext>
+  );
+}
+
+function RootDropZone({ visible }: { visible: boolean }) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: "root-zone",
+    data: { kind: "root" },
+    disabled: !visible,
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={cn(
+        "absolute inset-x-0 bottom-2 flex items-center gap-1.5 rounded-md border border-dashed bg-background px-2.5 py-1.5 text-xs text-muted-foreground transition-opacity",
+        visible ? "opacity-100" : "opacity-0 pointer-events-none",
+        isOver && "border-primary bg-accent text-foreground"
+      )}
+    >
+      <ArrowUpToLine className="size-3.5 shrink-0" />
+      여기에 놓으면 최상위로 이동
+    </div>
   );
 }
 
@@ -188,16 +322,26 @@ function DocumentLink({
   const href = `${basePath}/${doc.id}`;
   const active = pathname === href;
   const authorLabel = doc.createdBy ? USER_LABEL[doc.createdBy as User] : null;
+  const canDrag = isOwner(currentUser, doc.createdBy ?? null);
+
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: `doc:${doc.id}`,
+    data: { kind: "document", documentId: doc.id, categoryId: doc.workspaceCategory.id, name: doc.title },
+    disabled: !canDrag,
+  });
 
   return (
     <Link
+      ref={setNodeRef}
       href={href}
       onClick={onNavigate}
       style={{ paddingLeft: `${depth * 16 + 28}px` }}
       className={cn(
         "flex items-center gap-1.5 truncate rounded-md py-1.5 pr-2 transition-colors hover:bg-accent hover:text-accent-foreground",
-        active ? "bg-accent font-medium text-accent-foreground" : "text-muted-foreground"
+        active ? "bg-accent font-medium text-accent-foreground" : "text-muted-foreground",
+        isDragging && "opacity-40"
       )}
+      {...(canDrag ? { ...attributes, ...listeners } : {})}
     >
       <span
         title={STATUS_LABEL[doc.status]}
@@ -242,6 +386,17 @@ function FolderNodeItem({
 
   const canEdit = isOwner(currentUser, node.createdBy ?? null);
 
+  const { attributes, listeners, setNodeRef: setDraggableRef, isDragging } = useDraggable({
+    id: `folder:${node.id}`,
+    data: { kind: "folder", folderId: node.id, categoryId: node.workspaceCategory.id, name: node.name },
+    disabled: !canEdit,
+  });
+  const { setNodeRef: setDroppableRef, isOver } = useDroppable({
+    id: `folder:${node.id}`,
+    disabled: isDragging,
+    data: { kind: "folder", folderId: node.id, categoryId: node.workspaceCategory.id },
+  });
+
   function withStop(fn: () => void) {
     return (event: React.MouseEvent) => {
       event.stopPropagation();
@@ -263,11 +418,15 @@ function FolderNodeItem({
   return (
     <div>
       <div
-        role="button"
-        tabIndex={0}
+        ref={(el) => { setDraggableRef(el); setDroppableRef(el); }}
         onClick={() => setOpen((v) => !v)}
         style={{ paddingLeft: `${depth * 16 + 4}px` }}
-        className="group flex items-center gap-1 rounded-md py-1.5 pr-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+        className={cn(
+          "group flex items-center gap-1 rounded-md py-1.5 pr-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+          isDragging && "opacity-40",
+          isOver && "bg-accent ring-1 ring-primary/50"
+        )}
+        {...(canEdit ? { ...attributes, ...listeners } : { role: "button", tabIndex: 0 })}
       >
         {open ? (
           <ChevronDown className="size-3.5 shrink-0" />

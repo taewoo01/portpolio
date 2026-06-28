@@ -290,11 +290,15 @@
   figure,
   table,
   .shiki,
-  pre,
-  img {
+  pre {
     break-inside: avoid;
     orphans: 3;
     widows: 3;
+  }
+
+  img,
+  p:has(> img:only-child) {
+    break-inside: auto;
   }
 
   a {

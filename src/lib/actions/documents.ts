@@ -72,6 +72,38 @@ export async function updateDocumentAction(
   }
 }
 
+export async function moveDocumentAction(
+  documentId: string,
+  targetFolderId: string | null
+): Promise<{ error: string } | undefined> {
+  try {
+    const currentUser = await getUser();
+    const existing = await prisma.document.findFirst({
+      where: { id: documentId },
+      select: { createdBy: true, workspaceCategoryId: true, folderId: true },
+    });
+    if (!existing) return { error: "문서를 찾을 수 없습니다." };
+    if (!isOwner(currentUser, existing.createdBy ?? null)) return { error: "권한이 없습니다." };
+    if (existing.folderId === targetFolderId) return;
+
+    if (targetFolderId) {
+      const folder = await prisma.folder.findUnique({
+        where: { id: targetFolderId },
+        select: { workspaceCategoryId: true },
+      });
+      if (!folder || folder.workspaceCategoryId !== existing.workspaceCategoryId) {
+        return { error: "같은 카테고리 안에서만 이동할 수 있습니다." };
+      }
+    }
+
+    await prisma.document.update({ where: { id: documentId }, data: { folderId: targetFolderId } });
+    revalidatePath("/wiki");
+  } catch (e) {
+    console.error(e);
+    return { error: "문서 이동에 실패했습니다." };
+  }
+}
+
 export async function deleteDocumentAction(
   workspaceCategoryId: string,
   documentId: string
