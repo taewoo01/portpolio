@@ -26,6 +26,7 @@ export async function publishDocumentAction(
 
     const data = {
       workspaceCategoryId: document.workspaceCategoryId,
+      folderId: document.folderId,
       title,
       slug,
       content: document.content,

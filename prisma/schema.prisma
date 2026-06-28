@@ -52,6 +52,7 @@ model Folder {
   visibleTo           String[]          @default([]) @map("visible_to")
   sortOrder           Int               @default(0) @map("sort_order")
   documents           Document[]
+  blogPosts           BlogPost[]
   createdAt           DateTime          @default(now()) @map("created_at")
   updatedAt           DateTime          @updatedAt @map("updated_at")
 
@@ -150,6 +151,8 @@ model BlogPost {
   document            Document?         @relation(fields: [documentId], references: [id], onDelete: SetNull)
   workspaceCategoryId String            @map("workspace_category_id")
   workspaceCategory   WorkspaceCategory @relation(fields: [workspaceCategoryId], references: [id])
+  folderId            String?           @map("folder_id")
+  folder              Folder?           @relation(fields: [folderId], references: [id], onDelete: SetNull)
   title               String
   slug                String            @unique
   content             String

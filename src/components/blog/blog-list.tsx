@@ -26,10 +26,14 @@ type Post = {
   createdBy: string | null;
   workspaceCategoryId: string;
   workspaceCategory: Category;
+  folderId: string | null;
+  folder: { id: string; name: string } | null;
 };
 
 type Filter = "all" | string;
 type Sort = "name" | "latest";
+
+const PAGE_SIZE = 15;
 
 function summarize(post: { excerpt: string | null; content: string }) {
   if (post.excerpt) return post.excerpt;
@@ -46,16 +50,36 @@ export function BlogList({
   initialCategory?: Filter;
 }) {
   const [filter, setFilter] = useState<Filter>(initialCategory);
+  const [folderFilter, setFolderFilter] = useState<string | null>(null);
   const [sort, setSort] = useState<Sort>("name");
-  const filtered = filter === "all" ? posts : posts.filter((p) => p.workspaceCategoryId === filter);
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+
+  const categoryPosts = filter === "all" ? posts : posts.filter((p) => p.workspaceCategoryId === filter);
+  const foldersInCategory = Array.from(
+    new Map(categoryPosts.flatMap((p) => (p.folder ? [[p.folder.id, p.folder] as const] : []))).values()
+  );
+  const filtered = folderFilter ? categoryPosts.filter((p) => p.folderId === folderFilter) : categoryPosts;
   const sorted = [...filtered].sort((a, b) => {
     if (sort === "name") return a.title.localeCompare(b.title, "ko");
     return (b.publishedAt?.getTime() ?? 0) - (a.publishedAt?.getTime() ?? 0);
   });
+  const visible = sorted.slice(0, visibleCount);
 
   function selectFilter(f: Filter) {
     setFilter(f);
+    setFolderFilter(null);
+    setVisibleCount(PAGE_SIZE);
     window.history.replaceState(null, "", f === "all" ? "/blog" : `/blog?category=${f}`);
+  }
+
+  function selectFolder(f: string | null) {
+    setFolderFilter(f);
+    setVisibleCount(PAGE_SIZE);
+  }
+
+  function selectSort(s: Sort) {
+    setSort(s);
+    setVisibleCount(PAGE_SIZE);
   }
 
   return (
@@ -96,7 +120,7 @@ export function BlogList({
           })}
         </div>
 
-        <Select value={sort} onValueChange={(v) => setSort(v as Sort)}>
+        <Select value={sort} onValueChange={(v) => selectSort(v as Sort)}>
           <SelectTrigger className="w-28 text-sm">
             <SelectValue />
           </SelectTrigger>
@@ -107,34 +131,79 @@ export function BlogList({
         </Select>
       </div>
 
+      {foldersInCategory.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          <button
+            onClick={() => selectFolder(null)}
+            className={cn(
+              "rounded-full px-2.5 py-1 text-xs font-medium transition-colors",
+              folderFilter === null
+                ? "bg-secondary text-secondary-foreground"
+                : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
+            )}
+          >
+            전체 폴더
+          </button>
+          {foldersInCategory.map((folder) => (
+            <button
+              key={folder.id}
+              onClick={() => selectFolder(folder.id)}
+              className={cn(
+                "rounded-full px-2.5 py-1 text-xs font-medium transition-colors",
+                folderFilter === folder.id
+                  ? "bg-secondary text-secondary-foreground"
+                  : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
+              )}
+            >
+              {folder.name}
+            </button>
+          ))}
+        </div>
+      )}
+
       {sorted.length === 0 ? (
         <p className="py-12 text-center text-sm text-muted-foreground">해당 카테고리에 글이 없습니다.</p>
       ) : (
-        <ul className="flex flex-col divide-y">
-          {sorted.map((post) => (
-            <li key={post.id}>
-              <Link
-                href={filter === "all" ? `/blog/${post.slug}` : `/blog/${post.slug}?from=${filter}`}
-                className="flex flex-col gap-1.5 rounded-md px-3 py-4 transition-colors hover:bg-accent"
-              >
-                <div className="flex items-center gap-2">
-                  <span
-                    className="inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-xs font-medium"
-                    style={workspaceBadgeStyle(post.workspaceCategory.color)}
-                  >
-                    {post.workspaceCategory.name}
-                  </span>
-                  <span className="truncate text-lg font-medium">{post.title}</span>
-                </div>
-                <p className="line-clamp-2 text-sm text-muted-foreground">{summarize(post)}</p>
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  {post.createdBy && <span>{USER_LABEL[post.createdBy as User]}</span>}
-                  <span>{post.publishedAt?.toLocaleDateString("ko-KR")} 발행</span>
-                </div>
-              </Link>
-            </li>
-          ))}
-        </ul>
+        <>
+          <ul className="flex flex-col divide-y">
+            {visible.map((post) => (
+              <li key={post.id}>
+                <Link
+                  href={filter === "all" ? `/blog/${post.slug}` : `/blog/${post.slug}?from=${filter}`}
+                  className="flex flex-col gap-1.5 rounded-md px-3 py-4 transition-colors hover:bg-accent"
+                >
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-xs font-medium"
+                      style={workspaceBadgeStyle(post.workspaceCategory.color)}
+                    >
+                      {post.workspaceCategory.name}
+                    </span>
+                    {post.folder && (
+                      <span className="inline-flex shrink-0 items-center rounded-full bg-secondary px-2 py-0.5 text-xs text-secondary-foreground">
+                        {post.folder.name}
+                      </span>
+                    )}
+                    <span className="truncate text-lg font-medium">{post.title}</span>
+                  </div>
+                  <p className="line-clamp-2 text-sm text-muted-foreground">{summarize(post)}</p>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    {post.createdBy && <span>{USER_LABEL[post.createdBy as User]}</span>}
+                    <span>{post.publishedAt?.toLocaleDateString("ko-KR")} 발행</span>
+                  </div>
+                </Link>
+              </li>
+            ))}
+          </ul>
+          {visibleCount < sorted.length && (
+            <button
+              onClick={() => setVisibleCount((v) => v + PAGE_SIZE)}
+              className="mx-auto rounded-lg border px-4 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            >
+              더보기
+            </button>
+          )}
+        </>
       )}
     </div>
   );

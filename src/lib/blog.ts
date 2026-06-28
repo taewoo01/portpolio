@@ -4,6 +4,7 @@ import { visibilityWhere } from "@/lib/auth";
 import type { User } from "@/lib/auth";
 
 const CATEGORY_SELECT = { select: { id: true, name: true, color: true } } as const;
+const FOLDER_SELECT = { select: { id: true, name: true } } as const;
 
 export async function ensureUniqueSlug(slug: string, excludeId?: string): Promise<string> {
   let candidate = slug;
@@ -20,7 +21,7 @@ export async function ensureUniqueSlug(slug: string, excludeId?: string): Promis
 export async function getPublishedPosts(currentUser: User | null = null) {
   return prisma.blogPost.findMany({
     where: { published: true, ...visibilityWhere(currentUser) },
-    include: { workspaceCategory: CATEGORY_SELECT },
+    include: { workspaceCategory: CATEGORY_SELECT, folder: FOLDER_SELECT },
     orderBy: { publishedAt: "desc" },
   });
 }
@@ -28,6 +29,6 @@ export async function getPublishedPosts(currentUser: User | null = null) {
 export async function getPostBySlug(slug: string, currentUser: User | null = null) {
   return prisma.blogPost.findFirst({
     where: { slug, ...visibilityWhere(currentUser) },
-    include: { workspaceCategory: CATEGORY_SELECT },
+    include: { workspaceCategory: CATEGORY_SELECT, folder: FOLDER_SELECT },
   });
 }
