@@ -20,6 +20,41 @@ function parseGitHubUrl(url: string): { owner: string; repo: string } | null {
   return { owner: match[1], repo: match[2] };
 }
 
+function resolveAgainst(url: string, dirBase: string, rootBase: string): string {
+  if (/^[a-z][a-z0-9+.-]*:/i.test(url) || url.startsWith("//") || url.startsWith("#")) return url;
+  try {
+    return url.startsWith("/") ? new URL(url.slice(1), rootBase).toString() : new URL(url, dirBase).toString();
+  } catch {
+    return url;
+  }
+}
+
+// README의 상대 경로(이미지/링크)를 GitHub 절대 URL로 변환 — 이미지는 raw 파일, 링크는 blob 페이지를 가리키도록
+function rewriteGitHubUrls(markdown: string, data: { path: string; download_url: string; html_url: string }): string {
+  const rawRoot = data.download_url.slice(0, data.download_url.length - data.path.length);
+  const blobRoot = data.html_url.slice(0, data.html_url.length - data.path.length);
+  const dir = data.path.includes("/") ? data.path.slice(0, data.path.lastIndexOf("/") + 1) : "";
+  const rawDir = rawRoot + dir;
+  const blobDir = blobRoot + dir;
+
+  return markdown
+    .replace(/!\[([^\]]*)\]\(([^()\s]+)((?:\s+"[^"]*")?)\)/g, (_m, alt, url, title) =>
+      `![${alt}](${resolveAgainst(url, rawDir, rawRoot)}${title})`
+    )
+    .replace(/(?<!!)\[([^\]]*)\]\(([^()\s]+)((?:\s+"[^"]*")?)\)/g, (_m, text, url, title) =>
+      `[${text}](${resolveAgainst(url, blobDir, blobRoot)}${title})`
+    )
+    .replace(/(<img\b[^>]*?\bsrc=)(["'])([^"']+)\2/gi, (_m, pre, q, url) =>
+      `${pre}${q}${resolveAgainst(url, rawDir, rawRoot)}${q}`
+    )
+    .replace(/(<source\b[^>]*?\bsrcset=)(["'])([^"']+)\2/gi, (_m, pre, q, url) =>
+      `${pre}${q}${resolveAgainst(url, rawDir, rawRoot)}${q}`
+    )
+    .replace(/(<a\b[^>]*?\bhref=)(["'])([^"']+)\2/gi, (_m, pre, q, url) =>
+      `${pre}${q}${resolveAgainst(url, blobDir, blobRoot)}${q}`
+    );
+}
+
 function GitHubImport({ content, onImport }: { content: string; onImport: (md: string) => void }) {
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
@@ -50,7 +85,7 @@ function GitHubImport({ content, onImport }: { content: string; onImport: (md: s
       const binary = atob(data.content.replace(/\n/g, ""));
       const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
       const markdown = new TextDecoder("utf-8").decode(bytes);
-      onImport(markdown);
+      onImport(rewriteGitHubUrls(markdown, data));
       setUrl("");
     } catch {
       setError("네트워크 오류가 발생했습니다.");
