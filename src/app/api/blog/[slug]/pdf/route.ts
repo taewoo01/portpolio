@@ -45,6 +45,10 @@ export async function GET(
     // 페이지 경계보다 큰 이미지는, 그 시작 지점에 남은 공간에 맞춰 줄이거나
     // (충분한 공간이 있을 때) 다음 페이지로 넘긴다(공간이 너무 부족할 때).
     // 그래야 빈 페이지가 큰 공백으로 남는 일이 없다.
+    //
+    // 단, break-before를 "한 페이지보다 큰" 이미지에 걸면 크롬이 페이지를 하나 더
+    // 낭비하는 버그가 있어서(실측 확인됨), 그 경우는 강제 break 대신 남은 공간에
+    // 맞춰 줄이거나(가능하면) 그대로 둬서 브라우저의 기본 흐름에 맡긴다.
     await page.evaluate((pageHeight) => {
       const images = Array.from(document.querySelectorAll<HTMLImageElement>("#print-area img"));
       for (const img of images) {
@@ -52,13 +56,23 @@ export async function GET(
         const naturalHeight = rect.height;
         const relativeTop = rect.top % pageHeight;
         const remaining = pageHeight - relativeTop;
-        if (naturalHeight <= remaining) continue;
-        if (naturalHeight > pageHeight) continue; // 한 페이지보다 큰 사진은 자연스럽게 이어지도록 둔다
-        if (remaining >= naturalHeight * 0.5) {
+        if (naturalHeight <= remaining) continue; // 이미 한 페이지에 들어감
+
+        if (naturalHeight <= pageHeight) {
+          if (remaining >= naturalHeight * 0.5) {
+            img.style.maxHeight = `${Math.floor(remaining - 8)}px`;
+            img.style.width = "auto";
+          } else {
+            img.style.breakBefore = "page";
+          }
+          continue;
+        }
+
+        // 한 페이지보다 큰 이미지: 남은 공간이 쓸 만하면 그 자리에서 줄여서 보여주고,
+        // 너무 작으면 손대지 않아 브라우저가 자연스럽게 다음 페이지로 넘기게 둔다.
+        if (remaining >= pageHeight * 0.3) {
           img.style.maxHeight = `${Math.floor(remaining - 8)}px`;
           img.style.width = "auto";
-        } else {
-          img.style.breakBefore = "page";
         }
       }
     }, PAGE_HEIGHT_PX);
