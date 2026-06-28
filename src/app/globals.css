@@ -281,7 +281,9 @@
     position: absolute !important;
     inset: 0 !important;
     margin: 0 !important;
+    padding: 15mm !important;
     max-width: none !important;
+    box-sizing: border-box !important;
   }
 
   p,
