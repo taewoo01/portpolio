@@ -43,7 +43,7 @@ export default async function BlogPostPage({
               >
                 {post.workspaceCategory.name}
               </span>
-              <PrintButton />
+              <PrintButton slug={post.slug} />
             </div>
             <h1 className="text-3xl font-semibold">{post.title}</h1>
             <p className="text-sm text-muted-foreground">

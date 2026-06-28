@@ -301,13 +301,6 @@
     break-inside: auto;
   }
 
-  /* 인쇄 시 브라우저가 이미지 픽셀 자체를 페이지 경계로 나눠 그릴 수 없어서,
-     한 페이지 높이를 넘는 이미지는 통째로 다음 페이지로 밀려나며 빈 공백이 생긴다.
-     그래서 이미지를 한 페이지 안에 들어가도록 미리 축소한다. */
-  img {
-    max-height: 250mm;
-  }
-
   a {
     color: #000 !important;
     text-decoration: underline !important;
