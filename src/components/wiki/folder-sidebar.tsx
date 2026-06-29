@@ -335,7 +335,7 @@ function DocumentLink({
       ref={setNodeRef}
       href={href}
       onClick={onNavigate}
-      style={{ paddingLeft: `${depth * 16 + 28}px` }}
+      style={{ paddingLeft: `${depth * 16 + 4}px` }}
       className={cn(
         "flex items-center gap-1.5 truncate rounded-md py-1.5 pr-2 transition-colors hover:bg-accent hover:text-accent-foreground",
         active ? "bg-accent font-medium text-accent-foreground" : "text-muted-foreground",
@@ -512,7 +512,7 @@ function FolderNodeItem({
           ))}
           <button
             type="button"
-            style={{ paddingLeft: `${(depth + 1) * 16 + 28}px` }}
+            style={{ paddingLeft: `${(depth + 1) * 16 + 4}px` }}
             onClick={(e) => {
               e.stopPropagation();
               openCreateDocument(node.id, node.workspaceCategory.id);
