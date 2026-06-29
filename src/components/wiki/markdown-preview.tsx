@@ -122,7 +122,8 @@ export function MarkdownPreview({ content, lightbox = false }: { content: string
             return <>{children}</>;
           },
           code({ className, children }) {
-            if (!className) {
+            const isBlock = className || String(children).includes("\n");
+            if (!isBlock) {
               return <code className="rounded bg-muted px-1.5 py-0.5">{children}</code>;
             }
             return <CodeBlock className={className}>{children}</CodeBlock>;
