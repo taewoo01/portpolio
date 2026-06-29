@@ -36,6 +36,7 @@
 * Preserve API abstraction layers
 * Keep database schema scalable
 
+
 ## Design Guide
 
 * 참고 레퍼런스: Toss (toss.im) 스타일
