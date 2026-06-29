@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { getUser } from "@/lib/server/auth";
+import { isOwner } from "@/lib/auth";
 import { TASK_WORKSPACE_VALUES } from "@/lib/workspace";
 import type { TaskWorkspace } from "@/generated/prisma/client";
 
@@ -56,6 +57,13 @@ export async function updateEventAction(
   if (!TASK_WORKSPACE_VALUES.includes(workspace)) return { error: "잘못된 입력입니다." };
 
   try {
+    const currentUser = await getUser();
+    const existing = await prisma.event.findFirst({
+      where: { id: eventId },
+      select: { createdBy: true },
+    });
+    if (existing && !isOwner(currentUser, existing.createdBy ?? null)) return { error: "권한이 없습니다." };
+
     const data = parseEventInput(formData);
     await prisma.event.update({ where: { id: eventId }, data });
     revalidatePath("/calendar");
@@ -70,6 +78,13 @@ export async function deleteEventAction(
   eventId: string
 ): Promise<{ error: string } | undefined> {
   try {
+    const currentUser = await getUser();
+    const existing = await prisma.event.findFirst({
+      where: { id: eventId },
+      select: { createdBy: true },
+    });
+    if (existing && !isOwner(currentUser, existing.createdBy ?? null)) return { error: "권한이 없습니다." };
+
     await prisma.event.delete({ where: { id: eventId } });
     revalidatePath("/calendar");
     revalidatePath("/");

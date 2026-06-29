@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { getUser } from "@/lib/server/auth";
+import { isOwner } from "@/lib/auth";
 import { TASK_WORKSPACE_VALUES } from "@/lib/workspace";
 import type { TaskWorkspace } from "@/generated/prisma/client";
 
@@ -44,6 +45,13 @@ export async function updateTodoAction(
   if (!TASK_WORKSPACE_VALUES.includes(workspace)) return { error: "잘못된 입력입니다." };
 
   try {
+    const currentUser = await getUser();
+    const existing = await prisma.todo.findFirst({
+      where: { id: todoId },
+      select: { createdBy: true },
+    });
+    if (existing && !isOwner(currentUser, existing.createdBy ?? null)) return { error: "권한이 없습니다." };
+
     const data = parseTodoInput(formData);
     await prisma.todo.update({ where: { id: todoId }, data });
     revalidatePath("/calendar");
@@ -58,6 +66,13 @@ export async function deleteTodoAction(
   todoId: string
 ): Promise<{ error: string } | undefined> {
   try {
+    const currentUser = await getUser();
+    const existing = await prisma.todo.findFirst({
+      where: { id: todoId },
+      select: { createdBy: true },
+    });
+    if (existing && !isOwner(currentUser, existing.createdBy ?? null)) return { error: "권한이 없습니다." };
+
     await prisma.todo.delete({ where: { id: todoId } });
     revalidatePath("/calendar");
     revalidatePath("/");
@@ -72,6 +87,13 @@ export async function toggleTodoCompleteAction(
   completed: boolean
 ): Promise<{ error: string } | undefined> {
   try {
+    const currentUser = await getUser();
+    const existing = await prisma.todo.findFirst({
+      where: { id: todoId },
+      select: { createdBy: true },
+    });
+    if (existing && !isOwner(currentUser, existing.createdBy ?? null)) return { error: "권한이 없습니다." };
+
     await prisma.todo.update({ where: { id: todoId }, data: { completed } });
     revalidatePath("/calendar");
     revalidatePath("/");

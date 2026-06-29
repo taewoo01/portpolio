@@ -25,31 +25,56 @@ function getPinMap(): Record<string, User> {
 
 async function getClientIp(): Promise<string> {
   const store = await headers();
-  return store.get("x-forwarded-for")?.split(",")[0].trim() ?? store.get("x-real-ip") ?? "unknown";
+  const forwarded = store.get("x-forwarded-for");
+  if (forwarded) {
+    const ips = forwarded.split(",").map((ip) => ip.trim()).filter(Boolean);
+    if (ips.length > 0) return ips[ips.length - 1];
+  }
+  return store.get("x-real-ip") ?? "unknown";
+}
+
+function isLocked(attempt: { lockedUntil: Date | null } | null): boolean {
+  return !!attempt?.lockedUntil && attempt.lockedUntil > new Date();
+}
+
+async function recordFailedAttempt(identifier: string, current: { attempts: number } | null) {
+  const attempts = (current?.attempts ?? 0) + 1;
+  const lockedUntil = attempts >= MAX_ATTEMPTS ? new Date(Date.now() + LOCKOUT_MS) : null;
+  await prisma.loginAttempt.upsert({
+    where: { identifier },
+    create: { identifier, attempts, lockedUntil },
+    update: { attempts, lockedUntil },
+  });
 }
 
 export async function loginAction(pin: string): Promise<string | null> {
-  const identifier = await getClientIp();
+  const ip = await getClientIp();
+  const pinKey = `pin:${pin}`;
 
-  const attempt = await prisma.loginAttempt.findUnique({ where: { identifier } });
-  if (attempt?.lockedUntil && attempt.lockedUntil > new Date()) {
-    const minutes = Math.ceil((attempt.lockedUntil.getTime() - Date.now()) / 60000);
+  const [ipAttempt, pinAttempt] = await Promise.all([
+    prisma.loginAttempt.findUnique({ where: { identifier: ip } }),
+    prisma.loginAttempt.findUnique({ where: { identifier: pinKey } }),
+  ]);
+
+  const locked = [ipAttempt, pinAttempt].find(isLocked);
+  if (locked?.lockedUntil) {
+    const minutes = Math.ceil((locked.lockedUntil.getTime() - Date.now()) / 60000);
     return `너무 많은 시도가 감지되었습니다. ${minutes}분 후 다시 시도하세요.`;
   }
 
   const user = getPinMap()[pin];
   if (!user) {
-    const attempts = (attempt?.attempts ?? 0) + 1;
-    const lockedUntil = attempts >= MAX_ATTEMPTS ? new Date(Date.now() + LOCKOUT_MS) : null;
-    await prisma.loginAttempt.upsert({
-      where: { identifier },
-      create: { identifier, attempts, lockedUntil },
-      update: { attempts, lockedUntil },
-    });
+    await Promise.all([
+      recordFailedAttempt(ip, ipAttempt),
+      recordFailedAttempt(pinKey, pinAttempt),
+    ]);
     return "PIN이 올바르지 않습니다.";
   }
 
-  if (attempt) await prisma.loginAttempt.delete({ where: { identifier } });
+  await Promise.all([
+    ipAttempt ? prisma.loginAttempt.delete({ where: { identifier: ip } }) : Promise.resolve(),
+    pinAttempt ? prisma.loginAttempt.delete({ where: { identifier: pinKey } }) : Promise.resolve(),
+  ]);
 
   const session = await getIronSession<SessionData>(await cookies(), sessionOptions);
   session.user = user;
