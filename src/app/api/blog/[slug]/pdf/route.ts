@@ -42,6 +42,13 @@ export async function GET(
     await page.emulateMediaType("print");
     await page.evaluate(() => document.fonts.ready);
 
+    const fontDebug = await page.evaluate(() => ({
+      pretendardLoaded: document.fonts.check("16px Pretendard"),
+      pretendardBold: document.fonts.check("bold 16px Pretendard"),
+      loadedFamilies: Array.from(document.fonts).map((f) => `${f.family} ${f.weight} ${f.status}`),
+    }));
+    console.log("[pdf-debug] fonts:", JSON.stringify(fontDebug));
+
     // 페이지 경계보다 큰 이미지는, 그 시작 지점에 남은 공간에 맞춰 줄이거나
     // (충분한 공간이 있을 때) 다음 페이지로 넘긴다(공간이 너무 부족할 때).
     // 그래야 빈 페이지가 큰 공백으로 남는 일이 없다.
@@ -49,26 +56,46 @@ export async function GET(
     // 단, break-before를 "한 페이지보다 큰" 이미지에 걸면 크롬이 페이지를 하나 더
     // 낭비하는 버그가 있어서(실측 확인됨), 그 경우는 강제 break 대신 남은 공간에
     // 맞춰 줄이거나(가능하면) 그대로 둬서 브라우저의 기본 흐름에 맡긴다.
-    await page.evaluate((pageHeight) => {
+    const resizeDebug = await page.evaluate((pageHeight) => {
       // getBoundingClientRect() 측정 시점과 실제 PDF 페이지네이션 엔진이 쓰는 값 사이에
       // 서브픽셀 단위 오차가 있어서, 줄인 높이가 남은 공간에 딱 맞으면(8px 정도 여유로는)
       // 그 미세한 오차만으로도 다음 페이지로 밀려버린다(실측 확인됨). 충분히 여유를 둔다.
       const SAFETY_BUFFER_PX = 40;
       const images = Array.from(document.querySelectorAll<HTMLImageElement>("#print-area img"));
+      const log: Record<string, unknown>[] = [];
       for (const img of images) {
         const rect = img.getBoundingClientRect();
         const naturalHeight = rect.height;
         const relativeTop = rect.top % pageHeight;
         const remaining = pageHeight - relativeTop;
-        if (naturalHeight <= remaining) continue; // 이미 한 페이지에 들어감
+        const entry: Record<string, unknown> = {
+          src: img.src.slice(-60),
+          intrinsicWidth: img.naturalWidth,
+          intrinsicHeight: img.naturalHeight,
+          renderedWidth: rect.width,
+          renderedHeight: naturalHeight,
+          top: rect.top,
+          relativeTop,
+          remaining,
+          pageHeight,
+        };
+        if (naturalHeight <= remaining) {
+          entry.action = "fits-already";
+          log.push(entry);
+          continue;
+        }
 
         if (naturalHeight <= pageHeight) {
           if (remaining >= naturalHeight * 0.5) {
             img.style.maxHeight = `${Math.floor(remaining - SAFETY_BUFFER_PX)}px`;
             img.style.width = "auto";
+            entry.action = "shrink";
+            entry.appliedMaxHeight = img.style.maxHeight;
           } else {
             img.style.breakBefore = "page";
+            entry.action = "breakBefore";
           }
+          log.push(entry);
           continue;
         }
 
@@ -77,9 +104,16 @@ export async function GET(
         if (remaining >= pageHeight * 0.3) {
           img.style.maxHeight = `${Math.floor(remaining - SAFETY_BUFFER_PX)}px`;
           img.style.width = "auto";
+          entry.action = "shrink-oversized";
+          entry.appliedMaxHeight = img.style.maxHeight;
+        } else {
+          entry.action = "leave-alone";
         }
+        log.push(entry);
       }
+      return log;
     }, PAGE_HEIGHT_PX);
+    console.log("[pdf-debug] resize:", JSON.stringify(resizeDebug));
 
     const pdf = await page.pdf({
       width: `${PAGE_WIDTH_PX}px`,
