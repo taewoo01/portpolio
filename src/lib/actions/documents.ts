@@ -97,6 +97,15 @@ export async function moveDocumentAction(
     }
 
     await prisma.document.update({ where: { id: documentId }, data: { folderId: targetFolderId } });
+
+    // 이미 발행된 블로그 글이 있으면 폴더 위치도 같이 옮긴다 (재발행 없이 바로 반영되도록).
+    const post = await prisma.blogPost.findFirst({ where: { documentId }, select: { id: true, slug: true } });
+    if (post) {
+      await prisma.blogPost.update({ where: { id: post.id }, data: { folderId: targetFolderId } });
+      revalidatePath("/blog");
+      revalidatePath(`/blog/${post.slug}`);
+    }
+
     revalidatePath("/wiki");
   } catch (e) {
     console.error(e);
