@@ -49,18 +49,17 @@ export async function GET(
     }));
     console.log("[pdf-debug] fonts:", JSON.stringify(fontDebug));
 
-    // 페이지 경계보다 큰 이미지는, 그 시작 지점에 남은 공간에 맞춰 줄이거나
-    // (충분한 공간이 있을 때) 다음 페이지로 넘긴다(공간이 너무 부족할 때).
-    // 그래야 빈 페이지가 큰 공백으로 남는 일이 없다.
-    //
-    // 단, break-before를 "한 페이지보다 큰" 이미지에 걸면 크롬이 페이지를 하나 더
-    // 낭비하는 버그가 있어서(실측 확인됨), 그 경우는 강제 break 대신 남은 공간에
-    // 맞춰 줄이거나(가능하면) 그대로 둬서 브라우저의 기본 흐름에 맡긴다.
+    // 페이지 경계에 안 맞는 이미지는 남은 공간에 맞춰 줄이거나(충분히 쓸 만하면)
+    // 다음 페이지로 넘긴다(너무 좁으면). 그래야 빈 페이지가 큰 공백으로 남지 않는다.
     const resizeDebug = await page.evaluate((pageHeight) => {
       // getBoundingClientRect() 측정 시점과 실제 PDF 페이지네이션 엔진이 쓰는 값 사이에
-      // 서브픽셀 단위 오차가 있어서, 줄인 높이가 남은 공간에 딱 맞으면(8px 정도 여유로는)
-      // 그 미세한 오차만으로도 다음 페이지로 밀려버린다(실측 확인됨). 충분히 여유를 둔다.
+      // 서브픽셀 단위 오차가 있어서, 줄인 높이가 남은 공간에 딱 맞으면 그 미세한 오차만으로도
+      // 다음 페이지로 밀려버린다(실측 확인됨). 충분히 여유를 둔다.
       const SAFETY_BUFFER_PX = 40;
+      // 비율(예: 원본의 50%) 기준은 실제 남은 공간이 그 경계선에 거의 딱 걸쳐있을 때
+      // 서브픽셀 오차로 판정이 뒤집히는 문제가 있었다(실측 확인됨). "줄였을 때 결과가
+      // 최소 이 정도는 돼야 의미있다"는 절대 픽셀 기준으로 바꿔서 경계 근처 흔들림을 없앤다.
+      const MIN_USEFUL_HEIGHT_PX = 150;
       const images = Array.from(document.querySelectorAll<HTMLImageElement>("#print-area img"));
       const log: Record<string, unknown>[] = [];
       for (const img of images) {
@@ -85,28 +84,20 @@ export async function GET(
           continue;
         }
 
-        if (naturalHeight <= pageHeight) {
-          if (remaining >= naturalHeight * 0.5) {
-            img.style.maxHeight = `${Math.floor(remaining - SAFETY_BUFFER_PX)}px`;
-            img.style.width = "auto";
-            entry.action = "shrink";
-            entry.appliedMaxHeight = img.style.maxHeight;
-          } else {
-            img.style.breakBefore = "page";
-            entry.action = "breakBefore";
-          }
-          log.push(entry);
-          continue;
-        }
-
-        // 한 페이지보다 큰 이미지: 남은 공간이 쓸 만하면 그 자리에서 줄여서 보여주고,
-        // 너무 작으면 손대지 않아 브라우저가 자연스럽게 다음 페이지로 넘기게 둔다.
-        if (remaining >= pageHeight * 0.3) {
-          img.style.maxHeight = `${Math.floor(remaining - SAFETY_BUFFER_PX)}px`;
+        const shrunkHeight = remaining - SAFETY_BUFFER_PX;
+        if (shrunkHeight >= MIN_USEFUL_HEIGHT_PX) {
+          // 줄였을 때 결과가 충분히 쓸 만하면, 한 페이지보다 큰 사진이라도 그 자리에서 줄여서 보여준다.
+          img.style.maxHeight = `${Math.floor(shrunkHeight)}px`;
           img.style.width = "auto";
-          entry.action = "shrink-oversized";
+          entry.action = "shrink";
           entry.appliedMaxHeight = img.style.maxHeight;
+        } else if (naturalHeight <= pageHeight) {
+          // 한 페이지 안에는 들어갈 수 있는 크기인데 남은 공간이 너무 적다 -> 다음 페이지로 깨끗이 넘긴다.
+          img.style.breakBefore = "page";
+          entry.action = "breakBefore";
         } else {
+          // 사진이 한 페이지보다 크고 공간도 거의 없다 -> 손대지 않고 브라우저 기본 흐름에 맡긴다
+          // (강제로 넘기면 빈 페이지가 하나 더 생기는 버그가 있었다, 실측 확인됨).
           entry.action = "leave-alone";
         }
         log.push(entry);
