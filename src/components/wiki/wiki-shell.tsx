@@ -26,7 +26,7 @@ export function WikiShell({
   return (
     <WikiActionsProvider categories={[]} basePath={basePath} currentUser={currentUser}>
       <div className="flex gap-6">
-        <div className="hidden md:block">
+        <div className="hidden md:block md:sticky md:top-22 md:self-start md:max-h-[calc(100vh-5.5rem)] md:overflow-y-auto">
           <FolderSidebar
             categories={[]}
             tree={tree}

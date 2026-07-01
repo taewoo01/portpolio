@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, type RefObject } from "react";
-import { Bold, Code, Heading1, Heading2, Heading3, ImagePlus, List, Pilcrow, Quote } from "lucide-react";
+import { Bold, Code, Heading1, Heading2, Heading3, ImagePlus, Italic, List, Pilcrow, Quote } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 type Selection = { content: string; start: number; end: number };
@@ -26,7 +26,7 @@ function transformSelectedLines(
   };
 }
 
-function wrapSelection(
+export function wrapSelection(
   content: string,
   start: number,
   end: number,
@@ -101,6 +101,11 @@ const BUTTONS: ToolbarButton[] = [
     label: "굵게",
     icon: Bold,
     apply: (content, start, end) => wrapSelection(content, start, end, "**", "**", "굵은 텍스트"),
+  },
+  {
+    label: "기울임",
+    icon: Italic,
+    apply: (content, start, end) => wrapSelection(content, start, end, "*", "*", "기울임 텍스트"),
   },
   {
     label: "코드",
