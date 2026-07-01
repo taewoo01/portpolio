@@ -1,3 +1,180 @@
+# 2026.06.29 개발 기록
+
+### 1. 로그인 — 클라이언트가 조작 가능한 IP로 잠금이 무력화됨
+
+### 기존 문제
+`loginAction`의 잠금 식별자가 `x-forwarded-for` 헤더의 첫 번째 값 하나뿐이었다. 이 헤더는 클라이언트가 직접 보낼 수 있는 값이라, 요청마다 헤더를 바꿔 보내면 식별자가 매번 달라져 `MAX_ATTEMPTS=5` / 15분 잠금이 무력화됐다. 또한 식별자가 IP 하나뿐이라 여러 IP에 분산해서 시도하면 같은 PIN에 대한 무차별 대입도 막을 방법이 없었다.
+
+```typescript
+// 문제 상황 — src/lib/actions/auth.ts
+async function getClientIp(): Promise<string> {
+  const store = await headers();
+  return store.get("x-forwarded-for")?.split(",")[0].trim() ?? store.get("x-real-ip") ?? "unknown";
+}
+```
+
+### 해결 방법
+`x-forwarded-for`는 `클라이언트IP, 프록시1, 프록시2 ...` 순으로 각 홉이 앞에 누적되는 헤더라, 클라이언트가 조작 가능한 값은 항상 맨 앞이고 신뢰할 수 있는 마지막 hop 값은 체인의 마지막이다. `split(",")[0]` 대신 마지막 값을 쓰도록 바꿨다.
+
+```typescript
+// 기존
+async function getClientIp(): Promise<string> {
+  const store = await headers();
+  return store.get("x-forwarded-for")?.split(",")[0].trim() ?? store.get("x-real-ip") ?? "unknown";
+}
+
+// 변경 후
+async function getClientIp(): Promise<string> {
+  const store = await headers();
+  const forwarded = store.get("x-forwarded-for");
+  if (forwarded) {
+    const ips = forwarded.split(",").map((ip) => ip.trim()).filter(Boolean);
+    if (ips.length > 0) return ips[ips.length - 1];
+  }
+  return store.get("x-real-ip") ?? "unknown";
+}
+```
+
+IP만으로는 분산 시도를 막을 수 없으므로, 시도한 PIN 값 자체(`pin:${pin}`)도 별도 식별자로 두고 동일하게 5회/15분 잠금을 적용했다. 로그인 성공 시 IP·PIN 두 식별자 모두 초기화한다.
+
+```typescript
+// 추가: PIN 단위 잠금
+export async function loginAction(pin: string): Promise<string | null> {
+  const ip = await getClientIp();
+  const pinKey = `pin:${pin}`;
+
+  const [ipAttempt, pinAttempt] = await Promise.all([
+    prisma.loginAttempt.findUnique({ where: { identifier: ip } }),
+    prisma.loginAttempt.findUnique({ where: { identifier: pinKey } }),
+  ]);
+
+  const locked = [ipAttempt, pinAttempt].find(isLocked);
+  if (locked?.lockedUntil) {
+    const minutes = Math.ceil((locked.lockedUntil.getTime() - Date.now()) / 60000);
+    return `너무 많은 시도가 감지되었습니다. ${minutes}분 후 다시 시도하세요.`;
+  }
+  // ...
+}
+```
+
+---
+
+### 2. 일정/할 일 — 소유자 검증 없이 수정·삭제 가능 (IDOR)
+
+### 기존 문제
+`updateEventAction`/`deleteEventAction`(`events.ts`), `updateTodoAction`/`deleteTodoAction`/`toggleTodoCompleteAction`(`todos.ts`)이 id만으로 바로 `prisma.event`/`prisma.todo`의 update·delete를 호출했다. `documents.ts`의 동급 액션들은 `getUser()` + `isOwner(currentUser, existing.createdBy ?? null)` 체크를 거치는데 이 패턴이 빠져 있었다. 클라이언트(`todo-list.tsx`)는 `isOwner`로 삭제 버튼을 UI에서만 숨기고 있어, 서버 액션을 직접 호출하면(다른 사용자의 eventId/todoId를 알면) 우회되어 누구나 수정·삭제·완료 토글이 가능했다.
+
+### 해결 방법
+`documents.ts`와 동일하게, 각 액션 진입 시 `findFirst`로 대상의 `createdBy`를 조회하고 `isOwner` 체크를 통과해야만 실제 update/delete를 수행하도록 했다.
+
+```typescript
+// 추가 — events.ts / todos.ts 각 update/delete/toggle 액션 공통
+const currentUser = await getUser();
+const existing = await prisma.event.findFirst({ // todo.findFirst도 동일
+  where: { id: eventId },
+  select: { createdBy: true },
+});
+if (existing && !isOwner(currentUser, existing.createdBy ?? null)) return { error: "권한이 없습니다." };
+```
+
+대상이 존재하지 않는 경우는 그대로 통과시켜 이후 `update`/`delete`가 "Record not found"로 실패하고 기존 catch 블록의 에러 메시지로 처리되도록 했다(`documents.ts`와 동일한 동작). `createEventAction`/`createTodoAction`은 신규 생성이라 검증 대상에서 제외했다.
+
+---
+
+### 3. 업로드 API — 인증·타입·크기 검증 없이 공개 업로드 가능
+
+### 기존 문제
+`/api/upload`에 `getUser()` 호출이 없고 프로젝트 전체에 `middleware.ts`가 없어, 로그인 여부와 무관하게 누구나 직접 POST할 수 있었다. MIME 화이트리스트나 파일 크기 제한도 없어 임의 크기/타입 파일을 `access: "public"`으로 업로드할 수 있었고, 업로드 경로(`pathname`)로 클라이언트가 보낸 `file.name`을 그대로 사용했다.
+
+```typescript
+// 문제 상황 — src/app/api/upload/route.ts
+export async function POST(request: Request) {
+  const form = await request.formData();
+  const file = form.get("file") as File | null;
+  if (!file) return NextResponse.json({ error: "No file" }, { status: 400 });
+
+  const blob = await put(file.name, file, { access: "public" });
+  return NextResponse.json({ url: blob.url });
+}
+```
+
+### 해결 방법
+`getUser()`로 세션을 확인해 비로그인 요청을 401로 차단하고, 이미지 MIME 화이트리스트와 5MB 크기 제한을 추가했다. 업로드 경로는 클라이언트가 보낸 파일명 대신 검증된 MIME에서 도출한 확장자로 서버가 직접 생성한다(SVG는 XSS 위험으로 화이트리스트에서 제외).
+
+```typescript
+// 변경 후 — src/app/api/upload/route.ts
+const MAX_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
+const ALLOWED_TYPES: Record<string, string> = {
+  "image/png": "png",
+  "image/jpeg": "jpg",
+  "image/gif": "gif",
+  "image/webp": "webp",
+};
+
+export async function POST(request: Request) {
+  const currentUser = await getUser();
+  if (!currentUser) return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
+
+  const form = await request.formData();
+  const file = form.get("file") as File | null;
+  if (!file) return NextResponse.json({ error: "No file" }, { status: 400 });
+
+  const ext = ALLOWED_TYPES[file.type];
+  if (!ext) return NextResponse.json({ error: "허용되지 않는 파일 형식입니다." }, { status: 400 });
+  if (file.size > MAX_SIZE_BYTES) {
+    return NextResponse.json({ error: "파일 크기는 5MB를 초과할 수 없습니다." }, { status: 400 });
+  }
+
+  const blob = await put(`uploads/${randomUUID()}.${ext}`, file, {
+    access: "public",
+    contentType: file.type,
+    addRandomSuffix: false,
+  });
+  return NextResponse.json({ url: blob.url });
+}
+```
+
+---
+
+### 4. 소개 페이지 — 이메일을 `mailto:` 없이 입력하면 깨진 링크가 됨
+
+### 기존 문제
+`saveAboutProfileAction`이 `links` 배열을 검증·가공 없이 그대로 저장했다. 에디터의 링크 href 입력은 자유 텍스트라서, 이메일 주소를 `mailto:` 없이 입력하면(`you@example.com`) 그 형태로 그대로 저장되어 클릭 시 동작하지 않는 깨진 링크가 됐다.
+
+### 해결 방법
+저장 시점에 `href`가 이메일 패턴과 일치하면 `mailto:`를 붙이도록 정규화했다. 이미 스킴이 붙은 값(`mailto:...`, `http://...`)이나 경로(`/blog`)를 다시 매칭하지 않도록 `@`/공백/`:`/`/`를 제외하는 패턴을 썼다.
+
+```typescript
+// 추가 — src/lib/actions/about.ts
+const EMAIL_PATTERN = /^[^\s@:/]+@[^\s@]+\.[^\s@]+$/;
+
+function normalizeLinks(links: SiteLink[]): SiteLink[] {
+  return links.map((link) =>
+    EMAIL_PATTERN.test(link.href) ? { ...link, href: `mailto:${link.href}` } : link
+  );
+}
+```
+
+```typescript
+// 기존
+await prisma.aboutProfile.upsert({
+  where: { owner },
+  create: { owner, ...data, links: data.links },
+  update: { ...data, links: data.links },
+});
+
+// 변경 후
+const links = normalizeLinks(data.links);
+
+await prisma.aboutProfile.upsert({
+  where: { owner },
+  create: { owner, ...data, links },
+  update: { ...data, links },
+});
+```
+
+---
+
 # 2026.06.28 ~ 06.29 개발 기록
 
 ### 1. 위키 — GitHub README 가져오기 개선
