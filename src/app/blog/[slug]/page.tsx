@@ -29,7 +29,7 @@ export default async function BlogPostPage({
 
   return (
     <div className="mx-auto max-w-5xl">
-      <div className="flex gap-12">
+      <div className="flex flex-col gap-6 lg:flex-row lg:gap-12">
         <article id="print-area" className="min-w-0 flex-1 flex flex-col gap-6">
           <Link href={backHref} className="print:hidden text-sm text-muted-foreground hover:text-foreground">
             ← 목록으로
@@ -65,7 +65,7 @@ export default async function BlogPostPage({
           </footer>
         </article>
 
-        <aside className="print:hidden hidden lg:block w-52 shrink-0">
+        <aside className="print:hidden order-first lg:order-last w-full lg:w-52 lg:shrink-0">
           <TableOfContents headings={headings} />
         </aside>
       </div>

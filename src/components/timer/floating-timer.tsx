@@ -200,8 +200,8 @@ export function FloatingTimer() {
           transition={{ duration: 0.18, ease: "easeOut" }}
           className={
             isMobile
-              ? `fixed ${minimized ? "bottom-16" : "bottom-0"} left-0 right-0 z-[9999] rounded-t-2xl bg-zinc-900 text-white shadow-2xl`
-              : "fixed left-0 top-0 z-[9999] w-[280px] cursor-grab rounded-2xl bg-zinc-900 text-white shadow-2xl active:cursor-grabbing select-none"
+              ? "fixed bottom-16 left-0 right-0 z-9999 rounded-t-2xl bg-zinc-900 text-white shadow-2xl"
+              : "fixed left-0 top-0 z-9999 w-[280px] cursor-grab rounded-2xl bg-zinc-900 text-white shadow-2xl active:cursor-grabbing select-none"
           }
         >
           {/* 헤더 */}

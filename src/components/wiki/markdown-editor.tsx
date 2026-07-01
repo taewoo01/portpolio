@@ -196,7 +196,7 @@ export function MarkdownEditor({
         )}
       </div>
 
-      <div className={cn("grid flex-1 gap-4", mode === "split" && "grid-cols-2")}>
+      <div className={cn("grid flex-1 gap-4", mode === "split" && "md:grid-cols-2")}>
         {mode !== "preview" && (
           <Textarea
             ref={textareaRef}

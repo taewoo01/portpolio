@@ -197,7 +197,7 @@ export function CalendarView({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <div className="flex items-center gap-2">
           <h2 className="text-lg font-medium">캘린더</h2>
           <div className="flex gap-0 rounded-lg border p-0.5 text-sm">
@@ -221,7 +221,7 @@ export function CalendarView({
             ))}
           </div>
         </div>
-        <Button type="button" size="sm" onClick={() => openCreateDialog(new Date())}>
+        <Button type="button" size="sm" className="ml-auto shrink-0" onClick={() => openCreateDialog(new Date())}>
           일정 추가
         </Button>
       </div>

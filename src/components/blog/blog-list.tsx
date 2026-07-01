@@ -89,7 +89,7 @@ export function BlogList({
         <p className="text-sm text-muted-foreground">정리한 위키 문서 중 공개한 글입니다.</p>
       </div>
 
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex items-center justify-between gap-3 overflow-x-auto">
         <div className="flex w-fit gap-0 rounded-lg border p-0.5 text-sm">
           {(["all", ...categories.map((c) => c.id)] as Filter[]).map((f) => {
             const cat = categories.find((c) => c.id === f);

@@ -25,7 +25,7 @@ export default async function TimerPage() {
   ]);
 
   return (
-    <main className="mx-auto max-w-2xl space-y-6 px-4 py-8">
+    <div className="mx-auto max-w-2xl space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">타이머</h1>
         <FloatButton />
@@ -38,6 +38,6 @@ export default async function TimerPage() {
       <TodayActivity sessions={sessions} documents={documents} blogPosts={blogPosts} />
 
       <StudyChart weekly={weekly} monthly={monthly} />
-    </main>
+    </div>
   );
 }

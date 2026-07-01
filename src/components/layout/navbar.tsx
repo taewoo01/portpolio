@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Search, Home, BookOpen, CalendarDays, Timer } from "lucide-react";
+import { Search, Home, BookOpen, CalendarDays, Timer, FileText, User as UserIcon } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useOpenSearchPalette } from "@/components/search/search-provider";
@@ -24,6 +24,8 @@ const BOTTOM_NAV_ITEMS = [
   { href: "/wiki", label: "위키", icon: BookOpen },
   { href: "/calendar", label: "일정", icon: CalendarDays },
   { href: "/timer", label: "타이머", icon: Timer },
+  { href: "/blog", label: "블로그", icon: FileText },
+  { href: "/about", label: "About", icon: UserIcon },
 ];
 
 function isActive(pathname: string, href: string) {

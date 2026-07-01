@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { PanelLeft } from "lucide-react";
 import { FolderSidebar } from "./folder-sidebar";
@@ -22,6 +22,11 @@ export function WikiLayout({
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
+
+  useEffect(() => {
+    document.body.style.overflow = sidebarOpen ? "hidden" : "";
+    return () => { document.body.style.overflow = ""; };
+  }, [sidebarOpen]);
 
   return (
     <WikiActionsProvider categories={categories} basePath="/wiki" currentUser={currentUser}>
