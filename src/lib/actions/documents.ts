@@ -21,6 +21,7 @@ export async function createDocumentAction(
   if (!await categoryExists(workspaceCategoryId)) return { error: "잘못된 카테고리입니다." };
   try {
     const createdBy = await getUser();
+    if (!createdBy) return { error: "로그인이 필요합니다." };
     const document = await prisma.document.create({
       data: { workspaceCategoryId, folderId, title, content: "", createdBy },
     });
@@ -42,6 +43,7 @@ export async function updateDocumentAction(
 
   try {
     const currentUser = await getUser();
+    if (!currentUser) return { error: "로그인이 필요합니다." };
     const existing = await prisma.document.findFirst({
       where: { id: documentId },
       select: { createdBy: true },
@@ -78,6 +80,7 @@ export async function moveDocumentAction(
 ): Promise<{ error: string } | undefined> {
   try {
     const currentUser = await getUser();
+    if (!currentUser) return { error: "로그인이 필요합니다." };
     const existing = await prisma.document.findFirst({
       where: { id: documentId },
       select: { createdBy: true, workspaceCategoryId: true, folderId: true },
@@ -119,6 +122,7 @@ export async function deleteDocumentAction(
 ): Promise<{ error: string } | undefined> {
   try {
     const currentUser = await getUser();
+    if (!currentUser) return { error: "로그인이 필요합니다." };
     const existing = await prisma.document.findFirst({
       where: { id: documentId },
       select: { createdBy: true },

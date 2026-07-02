@@ -18,7 +18,8 @@ export const USER_INITIAL: Record<User, string> = {
 
 export function isOwner(currentUser: User | null, createdBy: string | null): boolean {
   if (currentUser === "taewoo") return true;
-  if (!createdBy) return true;
+  // 소유자 없는 레거시 레코드는 공개 읽기 전용 — 쓰기는 관리자(taewoo)만 가능
+  if (!createdBy) return false;
   return currentUser === createdBy;
 }
 

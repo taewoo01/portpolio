@@ -2,12 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
+import { getUser } from "@/lib/server/auth";
 
 export async function createWorkspaceCategoryAction(
   name: string,
   color: string
 ): Promise<{ id: string } | { error: string }> {
   if (!name.trim()) return { error: "이름을 입력해주세요." };
+  if (!(await getUser())) return { error: "로그인이 필요합니다." };
   try {
     const count = await prisma.workspaceCategory.count();
     const category = await prisma.workspaceCategory.create({
@@ -27,6 +29,7 @@ export async function updateWorkspaceCategoryAction(
   color: string
 ): Promise<{ error: string } | undefined> {
   if (!name.trim()) return { error: "이름을 입력해주세요." };
+  if (!(await getUser())) return { error: "로그인이 필요합니다." };
   try {
     await prisma.workspaceCategory.update({
       where: { id },
@@ -42,6 +45,7 @@ export async function updateWorkspaceCategoryAction(
 export async function deleteWorkspaceCategoryAction(
   id: string
 ): Promise<{ error: string } | undefined> {
+  if (!(await getUser())) return { error: "로그인이 필요합니다." };
   try {
     const [folderCount, docCount] = await Promise.all([
       prisma.folder.count({ where: { workspaceCategoryId: id } }),

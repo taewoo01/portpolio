@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -54,6 +54,27 @@ export function BlogList({
   const [sort, setSort] = useState<Sort>("name");
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
+  const chipScrollRef = useRef<HTMLDivElement>(null);
+  const [fade, setFade] = useState({ left: false, right: false });
+
+  const updateFade = useCallback(() => {
+    const el = chipScrollRef.current;
+    if (!el) return;
+    setFade({
+      left: el.scrollLeft > 2,
+      right: el.scrollLeft + el.clientWidth < el.scrollWidth - 2,
+    });
+  }, []);
+
+  useEffect(() => {
+    updateFade();
+    const el = chipScrollRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver(updateFade);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [updateFade]);
+
   const categoryPosts = filter === "all" ? posts : posts.filter((p) => p.workspaceCategoryId === filter);
   const foldersInCategory = Array.from(
     new Map(categoryPosts.flatMap((p) => (p.folder ? [[p.folder.id, p.folder] as const] : []))).values()
@@ -84,13 +105,28 @@ export function BlogList({
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold">블로그</h1>
-        <p className="text-sm text-muted-foreground">정리한 위키 문서 중 공개한 글입니다.</p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold">블로그</h1>
+          <p className="text-sm text-muted-foreground">정리한 위키 문서 중 공개한 글입니다.</p>
+        </div>
+        <Select value={sort} onValueChange={(v) => selectSort(v as Sort)}>
+          <SelectTrigger className="w-28 shrink-0 text-sm">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="name">이름순</SelectItem>
+            <SelectItem value="latest">최신순</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
-      <div className="flex items-center justify-between gap-3 overflow-x-auto">
-        <div className="flex w-fit gap-0 rounded-lg border p-0.5 text-sm">
+      <div className="relative w-fit max-w-full">
+        <div
+          ref={chipScrollRef}
+          onScroll={updateFade}
+          className="scrollbar-hide flex gap-0 overflow-x-auto rounded-lg border p-0.5 text-sm"
+        >
           {(["all", ...categories.map((c) => c.id)] as Filter[]).map((f) => {
             const cat = categories.find((c) => c.id === f);
             const label = f === "all" ? "전체" : (cat?.name ?? f);
@@ -98,7 +134,7 @@ export function BlogList({
               <button
                 key={f}
                 onClick={() => selectFilter(f)}
-                className="relative rounded-md px-3 py-1.5 transition-colors duration-150"
+                className="relative shrink-0 whitespace-nowrap rounded-md px-3 py-1.5 transition-colors duration-150"
               >
                 {filter === f && (
                   <motion.div
@@ -119,16 +155,12 @@ export function BlogList({
             );
           })}
         </div>
-
-        <Select value={sort} onValueChange={(v) => selectSort(v as Sort)}>
-          <SelectTrigger className="w-28 text-sm">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="name">이름순</SelectItem>
-            <SelectItem value="latest">최신순</SelectItem>
-          </SelectContent>
-        </Select>
+        {fade.left && (
+          <div className="pointer-events-none absolute inset-y-0 left-0 z-20 w-8 rounded-l-lg bg-gradient-to-r from-background to-transparent" />
+        )}
+        {fade.right && (
+          <div className="pointer-events-none absolute inset-y-0 right-0 z-20 w-8 rounded-r-lg bg-gradient-to-l from-background to-transparent" />
+        )}
       </div>
 
       {foldersInCategory.length > 0 && (

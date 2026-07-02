@@ -23,6 +23,7 @@ export async function createFolderAction(
   if (!await categoryExists(workspaceCategoryId)) return { error: "잘못된 카테고리입니다." };
   try {
     const createdBy = await getUser();
+    if (!createdBy) return { error: "로그인이 필요합니다." };
     await prisma.folder.create({ data: { workspaceCategoryId, name, parentId, createdBy, visibleTo: sanitizeVisibleTo(visibleTo) } });
     revalidatePath("/wiki");
   } catch (e) {
@@ -39,6 +40,7 @@ export async function renameFolderAction(
 ): Promise<{ error: string } | undefined> {
   try {
     const currentUser = await getUser();
+    if (!currentUser) return { error: "로그인이 필요합니다." };
     const existing = await prisma.folder.findFirst({
       where: { id: folderId },
       select: { createdBy: true },
@@ -61,6 +63,7 @@ export async function moveFolderAction(
 ): Promise<{ error: string } | undefined> {
   try {
     const currentUser = await getUser();
+    if (!currentUser) return { error: "로그인이 필요합니다." };
     const existing = await prisma.folder.findFirst({
       where: { id: folderId },
       select: { createdBy: true, workspaceCategoryId: true, parentId: true },
@@ -104,6 +107,7 @@ export async function deleteFolderAction(
 ): Promise<{ error: string } | undefined> {
   try {
     const currentUser = await getUser();
+    if (!currentUser) return { error: "로그인이 필요합니다." };
     const existing = await prisma.folder.findFirst({
       where: { id: folderId },
       select: { createdBy: true },

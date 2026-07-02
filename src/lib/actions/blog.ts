@@ -13,6 +13,7 @@ export async function publishDocumentAction(
 ): Promise<{ error: string } | undefined> {
   try {
     const currentUser = await getUser();
+    if (!currentUser) return { error: "로그인이 필요합니다." };
     const document = await prisma.document.findUnique({ where: { id: documentId } });
     if (!document) return { error: "문서를 찾을 수 없습니다." };
     if (!isOwner(currentUser, document.createdBy ?? null)) return { error: "권한이 없습니다." };
@@ -54,6 +55,7 @@ export async function unpublishPostAction(
 ): Promise<{ error: string } | undefined> {
   try {
     const currentUser = await getUser();
+    if (!currentUser) return { error: "로그인이 필요합니다." };
     const post = await prisma.blogPost.findUnique({
       where: { id: postId },
       select: { createdBy: true },
@@ -79,6 +81,7 @@ export async function deleteBlogPostAction(
 ): Promise<{ error: string } | undefined> {
   try {
     const currentUser = await getUser();
+    if (!currentUser) return { error: "로그인이 필요합니다." };
     const post = await prisma.blogPost.findUnique({
       where: { id: postId },
       select: { createdBy: true },

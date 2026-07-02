@@ -42,12 +42,14 @@ export async function GET(
     await page.emulateMediaType("print");
     await page.evaluate(() => document.fonts.ready);
 
-    const fontDebug = await page.evaluate(() => ({
-      pretendardLoaded: document.fonts.check("16px Pretendard"),
-      pretendardBold: document.fonts.check("bold 16px Pretendard"),
-      loadedFamilies: Array.from(document.fonts).map((f) => `${f.family} ${f.weight} ${f.status}`),
-    }));
-    console.log("[pdf-debug] fonts:", JSON.stringify(fontDebug));
+    if (process.env.NODE_ENV !== "production") {
+      const fontDebug = await page.evaluate(() => ({
+        pretendardLoaded: document.fonts.check("16px Pretendard"),
+        pretendardBold: document.fonts.check("bold 16px Pretendard"),
+        loadedFamilies: Array.from(document.fonts).map((f) => `${f.family} ${f.weight} ${f.status}`),
+      }));
+      console.log("[pdf-debug] fonts:", JSON.stringify(fontDebug));
+    }
 
     // 페이지 경계에 안 맞는 이미지는 남은 공간에 맞춰 줄이거나(충분히 쓸 만하면)
     // 다음 페이지로 넘긴다(너무 좁으면). 그래야 빈 페이지가 큰 공백으로 남지 않는다.
@@ -104,7 +106,9 @@ export async function GET(
       }
       return log;
     }, PAGE_HEIGHT_PX);
-    console.log("[pdf-debug] resize:", JSON.stringify(resizeDebug));
+    if (process.env.NODE_ENV !== "production") {
+      console.log("[pdf-debug] resize:", JSON.stringify(resizeDebug));
+    }
 
     const pdf = await page.pdf({
       width: `${PAGE_WIDTH_PX}px`,

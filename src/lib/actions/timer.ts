@@ -2,8 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
+import { getUser } from "@/lib/server/auth";
 
 export async function startSessionAction(title: string): Promise<string> {
+  if (!(await getUser())) throw new Error("로그인이 필요합니다.");
   const session = await prisma.studySession.create({
     data: { title, startAt: new Date() },
   });
@@ -12,6 +14,7 @@ export async function startSessionAction(title: string): Promise<string> {
 }
 
 export async function stopSessionAction(id: string): Promise<void> {
+  if (!(await getUser())) throw new Error("로그인이 필요합니다.");
   const session = await prisma.studySession.findUnique({ where: { id } });
   if (!session || session.endAt) return;
 

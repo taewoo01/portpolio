@@ -1,3 +1,177 @@
+# 2026.07.01 개발 기록
+
+### 1. 캘린더 — 반복 일정을 접을 수 있는 시리즈 카드로 묶기
+
+### 기존 문제
+월별 일정 목록(`MonthEventList`)이 반복 일정(`recurrence !== null`)을 개별 카드로 각각 나열했다. 매주 반복되는 일정이 달에 4~5개씩 쌓여 목록이 길어지고, 어떤 일정이 같은 시리즈인지 파악하기 어려웠다.
+
+### 해결 방법
+`title + recurrence` 복합 키로 반복 일정을 시리즈 그룹(`SeriesGroup`)으로 묶고, 하나의 `SeriesCard`로 접어 표시한다. 클릭 시 그 달의 개별 일정 전체를 인덴트 목록으로 펼친다.
+
+```typescript
+// 기존 — MonthEventList 내부
+const upcoming = events
+  .filter((e) => new Date(e.startAt) >= todayStart)
+  .sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime());
+
+// 변경 후 — groupEvents 함수로 분리
+const { upcoming, past } = groupEvents(events, todayStart);
+```
+
+그룹화 규칙:
+- 시리즈의 upcoming/past 분기: `upcomingEvents.length > 0`이면 upcoming, 아니면 past
+- upcoming 정렬: 시리즈는 다음 예정일 기준, 단일은 `startAt` 기준으로 함께 정렬
+- `SeriesCard` 헤더에 "다음 M.d (E) · 이번 달 N회" 요약 표시
+- 헤더의 "N개" 카운터는 `events.length` 그대로 유지해 월 통계 정확도 보존
+- 지난 일정 토글 레이블을 `{past.length}개` → `{past.length}건`으로 변경 (그룹 1개 = 1건)
+
+---
+
+### 2. 마크다운 에디터 — 키보드 단축키 + 기울임 버튼, 위키 사이드바 sticky
+
+### 기존 문제
+마크다운 에디터에서 Ctrl+S(저장)만 키보드로 가능했고, 굵게·기울임·코드 등 서식은 마우스로 툴바를 눌러야 했다. 툴바에 기울임 버튼도 없었다. 위키 사이드바는 `position: static`이라 스크롤 시 뷰포트 밖으로 사라졌다.
+
+### 해결 방법
+**키보드 단축키** (`markdown-editor.tsx`)
+
+`wrapSelection`을 `markdown-toolbar.tsx`에서 export해 에디터에서 재사용했다. `handleKeyDown`에 다음 단축키를 추가했다:
+
+| 단축키 | 동작 |
+|---|---|
+| Ctrl/Cmd+B | 굵게 (`**...**`) |
+| Ctrl/Cmd+I | 기울임 (`*...*`) |
+| Ctrl/Cmd+` | 인라인 코드 |
+| Tab | 커서: 2칸 삽입 / 선택: 각 줄 들여쓰기 |
+| Shift+Tab | 커서: 현재 줄 내어쓰기 / 선택: 각 줄 내어쓰기 |
+| Enter | 줄 끝에서 `- `/`> ` prefix 자동 이어쓰기; 빈 항목에서 Enter하면 prefix 제거 |
+
+```typescript
+// 추가 — markdown-toolbar.tsx
+export function wrapSelection(...) { ... }
+
+// 추가 — markdown-toolbar.tsx BUTTONS 배열
+{ label: "기울임", icon: Italic, apply: (c, s, e) => wrapSelection(c, s, e, "*", "*", "기울임 텍스트") },
+```
+
+**위키 사이드바 sticky** (`wiki-layout.tsx`, `wiki-shell.tsx`)
+
+```typescript
+// 기존
+<div className="hidden md:block">
+
+// 변경 후
+<div className="hidden md:block md:sticky md:top-22 md:self-start md:max-h-[calc(100vh-5.5rem)] md:overflow-y-auto">
+```
+
+`md:self-start`가 없으면 flex 형제와 동일 높이로 늘어나 sticky 발동 조건을 충족하지 못한다. `max-h + overflow-y-auto`로 사이드바 항목이 뷰포트를 초과해도 독립 스크롤되도록 했다.
+
+---
+
+### 3. 반응형 레이아웃 및 모바일 UX 개선
+
+### 기존 문제
+여러 페이지/컴포넌트에서 모바일 환경에 맞지 않는 레이아웃 문제들이 있었다.
+
+- **블로그 글 TOC**: `hidden lg:block`이라 모바일에서 목차에 접근할 방법 없음
+- **블로그 목록 카테고리 탭**: 탭이 많아지면 정렬 드롭다운과 충돌하거나 화면 밖으로 넘침
+- **캘린더 "일정 추가" 버튼**: `justify-between`은 `flex-wrap` 줄바꿈 시 두 번째 줄 왼쪽에 붙음
+- **모바일 하단 탭바**: 블로그·About 항목 없어 직접 이동 경로 없음
+- **타이머 페이지**: 외부 `<main>`에 이미 패딩이 있는데 내부 `<main>`이 `px-4 py-8`을 이중 적용, 시맨틱 오류이기도 함
+- **플로팅 타이머**: 비최소화 시 `bottom-0`이면 하단 탭바를 가림
+- **마크다운 에디터 분할 모드**: 모바일에서 `grid-cols-2`로 편집창·미리보기가 절반씩 찌그러짐
+- **위키 모바일 드로어**: 열렸을 때 배경이 스크롤되어 UX가 나쁨
+
+### 해결 방법
+
+**블로그 글 TOC** (`src/app/blog/[slug]/page.tsx`)
+
+```typescript
+// 기존
+<div className="flex gap-12">
+<aside className="print:hidden hidden lg:block w-52 shrink-0">
+
+// 변경 후
+<div className="flex flex-col gap-6 lg:flex-row lg:gap-12">
+<aside className="print:hidden order-first lg:order-last w-full lg:w-52 lg:shrink-0">
+```
+
+`order-first`로 모바일에서는 TOC를 본문 위에, `lg:order-last`로 데스크탑에서는 오른쪽으로 복원.
+
+**블로그 목록 카테고리 탭** (`blog-list.tsx`)
+
+```typescript
+// 기존
+<div className="flex items-center justify-between gap-3">
+// 변경 후
+<div className="flex items-center justify-between gap-3 overflow-x-auto">
+```
+
+**캘린더 "일정 추가" 버튼** (`calendar-view.tsx`)
+
+```typescript
+// 기존
+<div className="flex flex-wrap items-center justify-between gap-2">
+<Button type="button" size="sm" onClick={...}>
+
+// 변경 후
+<div className="flex flex-wrap items-center gap-2">
+<Button type="button" size="sm" className="ml-auto shrink-0" onClick={...}>
+```
+
+`ml-auto`를 버튼에 직접 주면 같은 줄이든 줄바꿈 후 새 줄이든 항상 오른쪽 끝에 고정.
+
+**모바일 탭바 — 블로그/About 추가** (`navbar.tsx`)
+
+```typescript
+// 추가
+{ href: "/blog", label: "블로그", icon: FileText },
+{ href: "/about", label: "About", icon: UserIcon },
+```
+
+`User`가 `@/lib/auth`와 이름 충돌해 `UserIcon`으로 alias 처리했다.
+
+**타이머 페이지** (`src/app/timer/page.tsx`)
+
+```typescript
+// 기존
+<main className="mx-auto max-w-2xl space-y-6 px-4 py-8">
+// 변경 후
+<div className="mx-auto max-w-2xl space-y-6">
+```
+
+**플로팅 타이머** (`floating-timer.tsx`)
+
+```typescript
+// 기존
+? `fixed ${minimized ? "bottom-16" : "bottom-0"} left-0 right-0 z-[9999] ...`
+// 변경 후
+? "fixed bottom-16 left-0 right-0 z-9999 ..."
+```
+
+비최소화 시에도 `bottom-16`으로 통일. `z-[9999]` → `z-9999`(canonical class).
+
+**마크다운 에디터 분할 모드** (`markdown-editor.tsx`)
+
+```typescript
+// 기존
+mode === "split" && "grid-cols-2"
+// 변경 후
+mode === "split" && "md:grid-cols-2"
+```
+
+**위키 드로어 배경 스크롤 잠금** (`wiki-layout.tsx`, `wiki-shell.tsx`)
+
+```typescript
+// 추가
+useEffect(() => {
+  document.body.style.overflow = sidebarOpen ? "hidden" : "";
+  return () => { document.body.style.overflow = ""; };
+}, [sidebarOpen]);
+```
+
+---
+
 # 2026.06.29 개발 기록
 
 ### 1. 로그인 — 클라이언트가 조작 가능한 IP로 잠금이 무력화됨

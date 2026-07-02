@@ -26,6 +26,7 @@ export async function createTodoAction(
   try {
     const data = parseTodoInput(formData);
     const createdBy = await getUser();
+    if (!createdBy) return { error: "로그인이 필요합니다." };
     const last = await prisma.todo.aggregate({ _max: { sortOrder: true } });
     const sortOrder = (last._max.sortOrder ?? 0) + 1;
     await prisma.todo.create({ data: { ...data, createdBy, sortOrder } });
@@ -46,6 +47,7 @@ export async function updateTodoAction(
 
   try {
     const currentUser = await getUser();
+    if (!currentUser) return { error: "로그인이 필요합니다." };
     const existing = await prisma.todo.findFirst({
       where: { id: todoId },
       select: { createdBy: true },
@@ -67,6 +69,7 @@ export async function deleteTodoAction(
 ): Promise<{ error: string } | undefined> {
   try {
     const currentUser = await getUser();
+    if (!currentUser) return { error: "로그인이 필요합니다." };
     const existing = await prisma.todo.findFirst({
       where: { id: todoId },
       select: { createdBy: true },
@@ -88,6 +91,7 @@ export async function toggleTodoCompleteAction(
 ): Promise<{ error: string } | undefined> {
   try {
     const currentUser = await getUser();
+    if (!currentUser) return { error: "로그인이 필요합니다." };
     const existing = await prisma.todo.findFirst({
       where: { id: todoId },
       select: { createdBy: true },

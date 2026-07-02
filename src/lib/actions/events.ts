@@ -40,6 +40,7 @@ export async function createEventAction(
   try {
     const data = parseEventInput(formData);
     const createdBy = await getUser();
+    if (!createdBy) return { error: "로그인이 필요합니다." };
     await prisma.event.create({ data: { ...data, createdBy } });
     revalidatePath("/calendar");
     revalidatePath("/");
@@ -58,6 +59,7 @@ export async function updateEventAction(
 
   try {
     const currentUser = await getUser();
+    if (!currentUser) return { error: "로그인이 필요합니다." };
     const existing = await prisma.event.findFirst({
       where: { id: eventId },
       select: { createdBy: true },
@@ -79,6 +81,7 @@ export async function deleteEventAction(
 ): Promise<{ error: string } | undefined> {
   try {
     const currentUser = await getUser();
+    if (!currentUser) return { error: "로그인이 필요합니다." };
     const existing = await prisma.event.findFirst({
       where: { id: eventId },
       select: { createdBy: true },
