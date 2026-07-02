@@ -130,6 +130,7 @@ export function CalendarView({
   const [isMobile, setIsMobile] = useState(false);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(() => new Date());
+  const dayPanelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768);
@@ -229,6 +230,13 @@ export function CalendarView({
     setDialogOpen(true);
   }
 
+  function selectDay(date: Date) {
+    setSelectedDate(date);
+    requestAnimationFrame(() => {
+      dayPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    });
+  }
+
   return (
     <div className="flex min-w-0 flex-col gap-3">
       <div className="flex items-center justify-between gap-2">
@@ -284,12 +292,15 @@ export function CalendarView({
           defaultView="month"
           selectable
           popup
-          onSelectEvent={(event) => openEditDialog(event.resource)}
+          onSelectEvent={(event) => {
+            if (isMobile) selectDay(event.start);
+            else openEditDialog(event.resource);
+          }}
           onSelectSlot={(slotInfo: SlotInfo) => {
-            if (isMobile) setSelectedDate(slotInfo.start);
+            if (isMobile) selectDay(slotInfo.start);
             else openCreateDialog(slotInfo.start);
           }}
-          onDrillDown={isMobile ? (date: Date) => setSelectedDate(date) : undefined}
+          onDrillDown={isMobile ? (date: Date) => selectDay(date) : undefined}
           dayPropGetter={(date) =>
             isMobile && isSameDay(date, selectedDate) ? { className: "rbc-selected-day" } : {}
           }
@@ -319,7 +330,7 @@ export function CalendarView({
       </div>
 
       {isMobile && (
-        <div className="rounded-xl border p-3">
+        <div ref={dayPanelRef} className="rounded-xl border p-3">
           <div className="mb-2 flex items-center justify-between">
             <h3 className="text-sm font-medium">
               {format(selectedDate, "M월 d일 (E)", { locale: ko })}
