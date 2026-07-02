@@ -224,6 +224,22 @@
   font-size: 0.7rem !important;
 }
 
+/* mobile: compact react-big-calendar toolbar so the month grid keeps its ratio */
+@media (max-width: 767px) {
+  .rbc-toolbar {
+    gap: 4px;
+    margin-bottom: 6px;
+  }
+  .rbc-toolbar button {
+    padding: 3px 8px;
+    font-size: 12px;
+  }
+  .rbc-toolbar .rbc-toolbar-label {
+    font-size: 13px;
+    padding: 0 4px;
+  }
+}
+
 @keyframes aurora-shift {
   0%   { background-position: 0% 50%; }
   50%  { background-position: 100% 50%; }

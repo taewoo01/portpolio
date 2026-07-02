@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Calendar, dateFnsLocalizer, type SlotInfo } from "react-big-calendar";
 import { addDays, addWeeks, endOfMonth, format, getDay, parse, startOfMonth, startOfWeek } from "date-fns";
@@ -136,6 +136,27 @@ export function CalendarView({
     return () => window.removeEventListener("resize", check);
   }, []);
 
+  const chipScrollRef = useRef<HTMLDivElement>(null);
+  const [fade, setFade] = useState({ left: false, right: false });
+
+  const updateFade = useCallback(() => {
+    const el = chipScrollRef.current;
+    if (!el) return;
+    setFade({
+      left: el.scrollLeft > 2,
+      right: el.scrollLeft + el.clientWidth < el.scrollWidth - 2,
+    });
+  }, []);
+
+  useEffect(() => {
+    updateFade();
+    const el = chipScrollRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver(updateFade);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [updateFade]);
+
   const filterOptions = useMemo<FilterUser[]>(() => {
     const hidden = hiddenUsersFor(currentUser);
     return ["all", ...ALL_USERS.filter((u) => !hidden.includes(u))];
@@ -196,34 +217,45 @@ export function CalendarView({
   }
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="flex items-center gap-2">
-          <h2 className="text-lg font-medium">캘린더</h2>
-          <div className="flex gap-0 rounded-lg border p-0.5 text-sm">
-            {filterOptions.map((f) => (
-              <button
-                key={f}
-                onClick={() => setFilter(f)}
-                className="relative rounded-md px-2.5 py-1 transition-colors duration-150"
-              >
-                {filter === f && (
-                  <motion.div
-                    layoutId="filter-indicator"
-                    className="absolute inset-0 rounded-md bg-primary"
-                    transition={{ type: "spring", stiffness: 500, damping: 35 }}
-                  />
-                )}
-                <span className={`relative z-10 ${filter === f ? "font-semibold text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
-                  {FILTER_LABELS[f]}
-                </span>
-              </button>
-            ))}
-          </div>
-        </div>
-        <Button type="button" size="sm" className="ml-auto shrink-0" onClick={() => openCreateDialog(new Date())}>
+    <div className="flex min-w-0 flex-col gap-3">
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="text-lg font-medium">캘린더</h2>
+        <Button type="button" size="sm" className="shrink-0" onClick={() => openCreateDialog(new Date())}>
           일정 추가
         </Button>
+      </div>
+
+      <div className="relative w-fit max-w-full">
+        <div
+          ref={chipScrollRef}
+          onScroll={updateFade}
+          className="scrollbar-hide flex gap-0 overflow-x-auto rounded-lg border p-0.5 text-sm"
+        >
+          {filterOptions.map((f) => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              className="relative shrink-0 whitespace-nowrap rounded-md px-2.5 py-1 transition-colors duration-150"
+            >
+              {filter === f && (
+                <motion.div
+                  layoutId="filter-indicator"
+                  className="absolute inset-0 rounded-md bg-primary"
+                  transition={{ type: "spring", stiffness: 500, damping: 35 }}
+                />
+              )}
+              <span className={`relative z-10 ${filter === f ? "font-semibold text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
+                {FILTER_LABELS[f]}
+              </span>
+            </button>
+          ))}
+        </div>
+        {fade.left && (
+          <div className="pointer-events-none absolute inset-y-0 left-0 z-20 w-8 rounded-l-lg bg-gradient-to-r from-background to-transparent" />
+        )}
+        {fade.right && (
+          <div className="pointer-events-none absolute inset-y-0 right-0 z-20 w-8 rounded-r-lg bg-gradient-to-l from-background to-transparent" />
+        )}
       </div>
 
       <div className="h-[480px] md:h-[640px] rounded-md border p-2">
