@@ -233,7 +233,7 @@ export function CalendarView({
   function selectDay(date: Date) {
     setSelectedDate(date);
     requestAnimationFrame(() => {
-      dayPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      dayPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
   }
 
@@ -330,7 +330,7 @@ export function CalendarView({
       </div>
 
       {isMobile && (
-        <div ref={dayPanelRef} className="rounded-xl border p-3">
+        <div ref={dayPanelRef} className="scroll-mt-16 rounded-xl border p-3">
           <div className="mb-2 flex items-center justify-between">
             <h3 className="text-sm font-medium">
               {format(selectedDate, "M월 d일 (E)", { locale: ko })}
