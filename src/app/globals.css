@@ -213,6 +213,11 @@
   color: var(--primary);
 }
 
+/* 모바일에서 탭으로 선택된 날짜 셀 하이라이트 */
+.rbc-selected-day {
+  background-color: color-mix(in srgb, var(--primary) 12%, transparent);
+}
+
 /* event font size & color */
 .rbc-event {
   font-size: 0.7rem !important;

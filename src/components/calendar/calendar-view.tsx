@@ -3,9 +3,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Calendar, dateFnsLocalizer, type SlotInfo } from "react-big-calendar";
-import { addDays, addWeeks, endOfMonth, format, getDay, parse, startOfMonth, startOfWeek } from "date-fns";
+import { addDays, addWeeks, endOfMonth, format, getDay, isSameDay, parse, startOfDay, startOfMonth, startOfWeek } from "date-fns";
 import { ko } from "date-fns/locale";
 import "react-big-calendar/lib/css/react-big-calendar.css";
+import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EventDialog } from "./event-dialog";
 import { ALL_USERS, USER_LABEL, USER_INITIAL, hiddenUsersFor } from "@/lib/auth";
@@ -128,6 +129,7 @@ export function CalendarView({
   const [filter, setFilter] = useState<FilterUser>("all");
   const [isMobile, setIsMobile] = useState(false);
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState(() => new Date());
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768);
@@ -199,6 +201,17 @@ export function CalendarView({
       })
       .sort((a, b) => a.startAt.getTime() - b.startAt.getTime());
   }, [filteredEvents, currentDate]);
+
+  const dayEvents = useMemo(() => {
+    if (!isMobile) return [];
+    const dayStart = startOfDay(selectedDate);
+    const dayEnd = addDays(dayStart, 1);
+    return calendarEvents
+      .filter((e) => e.start < dayEnd && e.end > dayStart)
+      .sort((a, b) =>
+        a.allDay === b.allDay ? a.start.getTime() - b.start.getTime() : a.allDay ? -1 : 1
+      );
+  }, [calendarEvents, selectedDate, isMobile]);
 
   useEffect(() => {
     onDateChange?.(currentDate, monthEvents);
@@ -272,7 +285,14 @@ export function CalendarView({
           selectable
           popup
           onSelectEvent={(event) => openEditDialog(event.resource)}
-          onSelectSlot={(slotInfo: SlotInfo) => openCreateDialog(slotInfo.start)}
+          onSelectSlot={(slotInfo: SlotInfo) => {
+            if (isMobile) setSelectedDate(slotInfo.start);
+            else openCreateDialog(slotInfo.start);
+          }}
+          onDrillDown={isMobile ? (date: Date) => setSelectedDate(date) : undefined}
+          dayPropGetter={(date) =>
+            isMobile && isSameDay(date, selectedDate) ? { className: "rbc-selected-day" } : {}
+          }
           eventPropGetter={(event) => ({
             style: {
               backgroundColor: WORKSPACE_COLOR[event.resource.workspace],
@@ -297,6 +317,53 @@ export function CalendarView({
           messages={MESSAGES}
         />
       </div>
+
+      {isMobile && (
+        <div className="rounded-xl border p-3">
+          <div className="mb-2 flex items-center justify-between">
+            <h3 className="text-sm font-medium">
+              {format(selectedDate, "M월 d일 (E)", { locale: ko })}
+            </h3>
+            <button
+              type="button"
+              onClick={() => openCreateDialog(selectedDate)}
+              className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-primary transition-colors hover:bg-accent"
+            >
+              <Plus className="size-3.5" />
+              추가
+            </button>
+          </div>
+          {dayEvents.length === 0 ? (
+            <p className="py-4 text-center text-xs text-muted-foreground">일정이 없습니다</p>
+          ) : (
+            <ul className="flex flex-col gap-1.5">
+              {dayEvents.map((e) => (
+                <li key={e.id}>
+                  <button
+                    type="button"
+                    onClick={() => openEditDialog(e.resource)}
+                    className="flex w-full items-center gap-2.5 rounded-lg bg-card px-3 py-2.5 text-left shadow-sm ring-1 ring-border/50 transition-colors hover:bg-accent"
+                  >
+                    <span
+                      className="size-2 shrink-0 rounded-full"
+                      style={{ backgroundColor: WORKSPACE_COLOR[e.resource.workspace] }}
+                    />
+                    <span className="min-w-0 flex-1 truncate text-sm font-medium">{e.title}</span>
+                    {e.resource.createdBy && (
+                      <span className="shrink-0 text-xs text-muted-foreground">
+                        {USER_LABEL[e.resource.createdBy as User]}
+                      </span>
+                    )}
+                    <span className="shrink-0 text-xs text-muted-foreground">
+                      {e.allDay ? "하루 종일" : format(e.start, "HH:mm")}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
       <EventDialog open={dialogOpen} onOpenChange={setDialogOpen} event={selectedEvent} defaultStart={slotDate} currentUser={currentUser} />
     </div>
