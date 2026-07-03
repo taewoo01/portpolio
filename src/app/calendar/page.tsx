@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { addMonths, subMonths } from "date-fns";
 import { getAllTodos, getEventsInRange } from "@/lib/calendar";
 import { getUser } from "@/lib/server/auth";
@@ -6,6 +7,7 @@ import { CalendarSection } from "@/components/calendar/calendar-section";
 export default async function CalendarPage() {
   const now = new Date();
   const currentUser = await getUser();
+  if (!currentUser) redirect("/login");
   const [events, todos] = await Promise.all([
     getEventsInRange(subMonths(now, 2), addMonths(now, 3), currentUser),
     getAllTodos(currentUser),

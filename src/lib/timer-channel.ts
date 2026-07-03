@@ -2,6 +2,7 @@ export const TIMER_CHANNEL_NAME = "portpolio-timer" as const;
 
 export type TimerStateMessage = {
   type: "STATE";
+  sessionId: string | null;   // 리더가 추적 중인 DB 세션 id — 리더 교체 시 승계용
   running: boolean;
   paused: boolean;
   elapsed: number;

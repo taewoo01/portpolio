@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { redirect } from "next/navigation";
 import { TimerWidget } from "@/components/timer/timer-widget";
 import { FloatButton } from "@/components/timer/float-button";
 import { TodayActivity } from "@/components/timer/today-activity";
@@ -16,6 +17,7 @@ export const metadata = { title: "타이머" };
 
 export default async function TimerPage() {
   const currentUser = await getUser();
+  if (!currentUser) redirect("/login");
   const [active, sessions, { documents, blogPosts }, weekly, monthly] = await Promise.all([
     getActiveSession(),
     getTodaySessions(),

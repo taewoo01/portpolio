@@ -35,9 +35,11 @@ export async function searchDocumentsAction(
   const trimmed = query.trim();
   if (!trimmed) return [];
 
+  const currentUser = await getUser();
+  if (!currentUser) return [];
+
   const lowered = trimmed.toLowerCase();
   const categoryWhere = categoryFilter !== "all" ? { workspaceCategoryId: categoryFilter } : {};
-  const currentUser = await getUser();
   const visibility = documentVisibilityWhere(currentUser);
 
   const [textMatches, tagCandidates] = await Promise.all([

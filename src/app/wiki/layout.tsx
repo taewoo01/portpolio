@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { getUser } from "@/lib/server/auth";
 import { folderVisibilityWhere, documentVisibilityWhere } from "@/lib/auth";
@@ -6,6 +7,7 @@ import { WikiLayout } from "@/components/wiki/wiki-layout";
 
 export default async function Layout({ children }: { children: React.ReactNode }) {
   const currentUser = await getUser();
+  if (!currentUser) redirect("/login");
   const [folders, documents, categories] = await Promise.all([
     prisma.folder.findMany({
       where: folderVisibilityWhere(currentUser),

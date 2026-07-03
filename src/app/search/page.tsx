@@ -1,4 +1,6 @@
+import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
+import { getUser } from "@/lib/server/auth";
 import { searchDocumentsAction, type WorkspaceFilter } from "@/lib/actions/search";
 import { SearchBar } from "@/components/search/search-bar";
 import { SearchResults } from "@/components/search/search-results";
@@ -13,6 +15,7 @@ export default async function SearchPage({
 }: {
   searchParams: Promise<{ q?: string; workspace?: string }>;
 }) {
+  if (!(await getUser())) redirect("/login");
   const params = await searchParams;
   const query = (params.q ?? "").trim();
   const workspace = toWorkspaceFilter(params.workspace);

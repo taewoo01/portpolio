@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { getPendingTodos, getTodayEvents } from "@/lib/calendar";
 import { getInProgressDocuments, getRecentBlogPosts, getRecentDocuments } from "@/lib/dashboard";
 import { getSiteStats } from "@/lib/stats";
@@ -11,6 +12,7 @@ import { HeroSection } from "@/components/dashboard/hero-section";
 
 export default async function Home() {
   const user = await getUser();
+  if (!user) redirect("/login");
   const [todayEvents, pendingTodos, recentDocuments, inProgressDocuments, recentBlogPosts, stats] =
     await Promise.all([
       getTodayEvents(user),
