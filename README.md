@@ -41,16 +41,17 @@ git 로그상 첫 커밋은 2026-06-08 (`Initial commit from Create Next App`)�
 | 타이머 | `/timer`, `/timer/float` | 학습/작업 시간 측정, 항상 위에 떠 있는 플로팅 타이머(브라우저 팝업 또는 Electron 네이티브 창), 주간/월간 통계 |
 | 통합 검색 | `Ctrl+K` 팔레트 (`src/components/search`) | 문서 제목/본문 검색, 카테고리 필터 |
 | About | `/about` | DB에 저장된 프로필(`AboutProfile`)을 사용자가 직접 편집 |
-| 로그인 | `/login` | 4인 고정 사용자 PIN 로그인, 5회 실패 시 IP 기준 15분 잠금 |
+| 로그인 | `/login` | 4인 고정 사용자 PIN 로그인, 5회 실패 시 IP 기준 15분 잠금 + 같은 PIN 반복 실패 시 응답 지연(백오프) |
 | 이미지 업로드 | `POST /api/upload` | Vercel Blob에 업로드 후 URL 반환 (에디터 이미지 첨부용) |
 | 데스크톱 앱 | `electron/main.js` | 배포된 웹앱을 그대로 로드하는 네이티브 셸 + 항상-위 플로팅 타이머 창 |
 
 ## 동작 방식
 
 1. 브라우저가 라우트를 요청하면 `src/proxy.ts` 미들웨어가 `iron-session` 쿠키를 확인한다. 세션이 없으면 `/login`으로 리다이렉트한다 (`/login`, `/timer/float`만 예외).
-2. 인증된 요청은 해당 라우트의 서버 컴포넌트(`layout.tsx` / `page.tsx`)가 Prisma로 PostgreSQL(Neon)을 조회한다. 이때 `src/lib/auth.ts`의 가시성 규칙(`folderVisibilityWhere`, `documentVisibilityWhere` 등)으로 사용자별로 보이는 데이터를 제한한다.
-3. 조회 결과를 클라이언트 컴포넌트에 props로 내려 화면을 렌더링한다.
-4. 문서 작성/이동, 일정 추가, 블로그 발행 같은 사용자 액션은 Server Action(`src/lib/actions/*.ts`)이 처리하고, 완료 후 `revalidatePath`로 관련 페이지 캐시를 무효화한다.
+2. 미들웨어와 별개로 비공개 페이지/레이아웃도 진입부에서 `getUser()`를 직접 확인해 비로그인 시 `/login`으로 리다이렉트한다 (미들웨어 우회 대비 다중 방어).
+3. 인증된 요청은 해당 라우트의 서버 컴포넌트(`layout.tsx` / `page.tsx`)가 Prisma로 PostgreSQL(Neon)을 조회한다. 이때 `src/lib/auth.ts`의 가시성 규칙(`folderVisibilityWhere`, `documentVisibilityWhere` 등)으로 사용자별로 보이는 데이터를 제한한다 (익명은 전체 차단).
+4. 조회 결과를 클라이언트 컴포넌트에 props로 내려 화면을 렌더링한다.
+5. 문서 작성/이동, 일정 추가, 블로그 발행 같은 사용자 액션은 Server Action(`src/lib/actions/*.ts`)이 처리한다. 모든 변경 액션은 진입부에서 세션 사용자를 자체 검증하고(비로그인 거부), 완료 후 `revalidatePath`로 관련 페이지 캐시를 무효화한다.
 
 ## 동작 파이프라인
 
@@ -166,7 +167,7 @@ portpolio/
 - `BlogPost` — `Document`에서 발행된 공개 글. `documentId`/`folderId`는 nullable(원본 문서가 삭제/이동돼도 글은 유지)
 - `Event` / `Todo` — 캘린더 일정과 할 일, `TaskWorkspace` enum(`dev`/`study`/`other`/`exercise`/`appointment`/`competition`/`exam`/`alba`)으로 라벨링
 - `StudySession` — 타이머로 측정한 학습/작업 세션
-- `LoginAttempt` — PIN 로그인 실패 횟수 + 잠금 시각 (IP 기준)
+- `LoginAttempt` — PIN 로그인 실패 기록. `identifier`에 IP 또는 `pin:xxxx` 키를 저장 — IP 키는 5회 실패 시 15분 잠금, PIN 키는 잠금 없이 응답 지연(백오프) 계산용
 - `AboutProfile` — 사용자별 About 페이지 프로필(이름, 역할, 소개, 스킬, 링크)
 
 ## 통신 프로토콜 / API
@@ -175,7 +176,7 @@ portpolio/
 |---|---|---|
 | PDF 내보내기 | `GET /api/blog/[slug]/pdf` | 응답: `application/pdf` 바이너리, `Content-Disposition: attachment` |
 | 이미지 업로드 | `POST /api/upload` (multipart/form-data, `file` 필드) | 응답: `{ url: string }` (Vercel Blob public URL) |
-| 타이머 실시간 동기화 | `BroadcastChannel("portpolio-timer")` (`src/lib/timer-channel.ts`) | `TimerStateMessage`(`STATE`)와 `TimerCommandMessage`(`START`/`PAUSE`/`RESUME`/`STOP`/`REQUEST_STATE`)를 같은 브라우저의 메인 창 ↔ 플로팅 창(`/timer/float`) 사이에서 교환 |
+| 타이머 실시간 동기화 | `BroadcastChannel("portpolio-timer")` (`src/lib/timer-channel.ts`) | `TimerStateMessage`(`STATE`, `sessionId` 포함)와 `TimerCommandMessage`(`START`/`PAUSE`/`RESUME`/`STOP`/`REQUEST_STATE`)를 같은 브라우저의 탭·플로팅 창(`/timer/float`) 사이에서 교환. 탭이 여러 개여도 Web Locks(`timer-owner`)로 선출된 리더 탭만 서버 액션을 실행하고, 나머지 탭은 커맨드를 채널로 위임 + 리더의 STATE를 채택 (중복 세션 방지, 리더 탭이 닫히면 다음 탭이 자동 승격) |
 | Electron IPC | `electron/preload.js` → `window.electronAPI` | `openFloatTimer()` / `closeFloatTimer()` — 웹 페이지에서 네이티브 플로팅 창을 열고 닫음 (Electron이 아닐 때는 `window.electronAPI`가 없어서 일반 브라우저 팝업으로 대체) |
 
 ## 시작하기
@@ -190,6 +191,7 @@ portpolio/
 ```bash
 npm install
 cp .env.example .env.local   # DATABASE_URL, DIRECT_URL, PIN_*, SESSION_SECRET 채우기
+                              # (선택) TRUSTED_PROXY_COUNT — 기본 1(Vercel), 프록시 없는 자체 호스팅이면 0
 npm run migrate                # 로컬 DB에 마이그레이션 적용 + 클라이언트 생성
 npm run dev
 ```
@@ -212,7 +214,7 @@ npm run dev
 - `public/manifest.json`이 `/icon-192.png`, `/icon-512.png`를 참조하지만 실제 `public/` 폴더에는 두 파일이 없다. PWA로 설치 시 아이콘이 깨질 수 있다 (확인 필요).
 - `src/app/dev/`, `src/app/study/`는 기능 코드가 아니라 과거 URL(`/dev`, `/study`)을 새 통합 라우트 `/wiki`로 리다이렉트만 시켜주는 호환성 코드다.
 - `electron/main.js`는 배포된 운영 URL(`https://portpolio-beta-mocha.vercel.app`)을 코드에 직접 하드코딩하고 있다. 배포 도메인이 바뀌면 이 파일도 같이 수정해야 한다.
-- `src/app/api/blog/[slug]/pdf/route.ts`에는 운영 환경 디버깅용 `console.log("[pdf-debug] ...")`가 의도적으로 남아 있다 (자세한 배경은 `CHANGELOG.md` 참고).
+- `src/app/api/blog/[slug]/pdf/route.ts`의 `console.log("[pdf-debug] ...")`는 `NODE_ENV !== "production"` 가드로 개발 환경에서만 출력된다 (자세한 배경은 `CHANGELOG.md` 참고).
 - `src/app/about/page.tsx`의 `DEFAULTS`는 실제 정보가 아닌 placeholder(`your-id`, `you@example.com` 등)이며, `AboutProfile` 테이블에 데이터가 없을 때만 보여주는 초기값이다. 관리자가 화면에서 직접 편집하면 DB에 저장된다.
 - `package.json`에는 Next.js 웹 앱 진입점 외에 Electron 데스크톱 진입점(`"main": "electron/main.js"`)이 같이 정의되어 있다. 실제 배포(Vercel)는 Next.js 빌드만 사용하고, Electron 빌드는 별도 로컬/수동 작업이다.
 - `.claude/commands/`는 `.gitignore`에 등록되어 있어 원격 저장소에는 올라가지 않는, 로컬 전용 Claude Code 작업 설정이다.
