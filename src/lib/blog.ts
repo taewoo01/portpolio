@@ -21,7 +21,11 @@ export async function ensureUniqueSlug(slug: string, excludeId?: string): Promis
 export async function getPublishedPosts(currentUser: User | null = null) {
   return prisma.blogPost.findMany({
     where: { published: true, ...visibilityWhere(currentUser) },
-    include: { workspaceCategory: CATEGORY_SELECT, folder: FOLDER_SELECT },
+    include: {
+      workspaceCategory: CATEGORY_SELECT,
+      folder: FOLDER_SELECT,
+      document: { select: { createdAt: true } },
+    },
     orderBy: { publishedAt: "desc" },
   });
 }

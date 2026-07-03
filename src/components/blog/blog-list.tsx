@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { ArrowDown, ArrowUp } from "lucide-react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -23,15 +24,24 @@ type Post = {
   excerpt: string | null;
   content: string;
   publishedAt: Date | null;
+  createdAt: Date;
   createdBy: string | null;
   workspaceCategoryId: string;
   workspaceCategory: Category;
   folderId: string | null;
   folder: { id: string; name: string } | null;
+  document: { createdAt: Date } | null;
 };
 
 type Filter = "all" | string;
-type Sort = "name" | "latest";
+type Sort = "name" | "latest" | "created";
+type Dir = "asc" | "desc";
+
+const DEFAULT_DIR: Record<Sort, Dir> = {
+  name: "asc",
+  latest: "desc",
+  created: "desc",
+};
 
 const PAGE_SIZE = 15;
 
@@ -52,6 +62,7 @@ export function BlogList({
   const [filter, setFilter] = useState<Filter>(initialCategory);
   const [folderFilter, setFolderFilter] = useState<string | null>(null);
   const [sort, setSort] = useState<Sort>("name");
+  const [dir, setDir] = useState<Dir>("asc");
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
   const chipScrollRef = useRef<HTMLDivElement>(null);
@@ -81,8 +92,17 @@ export function BlogList({
   );
   const filtered = folderFilter ? categoryPosts.filter((p) => p.folderId === folderFilter) : categoryPosts;
   const sorted = [...filtered].sort((a, b) => {
-    if (sort === "name") return a.title.localeCompare(b.title, "ko");
-    return (b.publishedAt?.getTime() ?? 0) - (a.publishedAt?.getTime() ?? 0);
+    let cmp: number;
+    if (sort === "name") {
+      cmp = a.title.localeCompare(b.title, "ko");
+    } else if (sort === "created") {
+      cmp =
+        (a.document?.createdAt ?? a.createdAt).getTime() -
+        (b.document?.createdAt ?? b.createdAt).getTime();
+    } else {
+      cmp = (a.publishedAt?.getTime() ?? 0) - (b.publishedAt?.getTime() ?? 0);
+    }
+    return dir === "asc" ? cmp : -cmp;
   });
   const visible = sorted.slice(0, visibleCount);
 
@@ -100,6 +120,12 @@ export function BlogList({
 
   function selectSort(s: Sort) {
     setSort(s);
+    setDir(DEFAULT_DIR[s]);
+    setVisibleCount(PAGE_SIZE);
+  }
+
+  function toggleDir() {
+    setDir((d) => (d === "asc" ? "desc" : "asc"));
     setVisibleCount(PAGE_SIZE);
   }
 
@@ -110,15 +136,26 @@ export function BlogList({
           <h1 className="text-2xl font-semibold">블로그</h1>
           <p className="text-sm text-muted-foreground">정리한 위키 문서 중 공개한 글입니다.</p>
         </div>
-        <Select value={sort} onValueChange={(v) => selectSort(v as Sort)}>
-          <SelectTrigger className="w-28 shrink-0 text-sm">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="name">이름순</SelectItem>
-            <SelectItem value="latest">최신순</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex shrink-0 items-center gap-1.5">
+          <Select value={sort} onValueChange={(v) => selectSort(v as Sort)}>
+            <SelectTrigger className="w-28 text-sm">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="name">이름</SelectItem>
+              <SelectItem value="latest">발행일</SelectItem>
+              <SelectItem value="created">파일 생성일</SelectItem>
+            </SelectContent>
+          </Select>
+          <button
+            type="button"
+            onClick={toggleDir}
+            aria-label={dir === "asc" ? "오름차순 (누르면 내림차순)" : "내림차순 (누르면 오름차순)"}
+            className="rounded-md border p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          >
+            {dir === "asc" ? <ArrowUp className="size-4" /> : <ArrowDown className="size-4" />}
+          </button>
+        </div>
       </div>
 
       <div className="relative w-fit max-w-full">
