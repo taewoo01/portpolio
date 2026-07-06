@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Search, Home, BookOpen, CalendarDays, Timer, FileText, User as UserIcon } from "lucide-react";
@@ -42,8 +43,15 @@ export function Navbar({ user }: { user: User | null }) {
       <header className="sticky top-0 z-50 border-b border-border/60 bg-background/80 backdrop-blur-md">
         <nav className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
           <div className="flex items-center gap-6">
-            <Link href="/" className="text-base font-bold tracking-tight text-foreground">
-              portpolio
+            <Link href="/" className="flex items-center">
+              <Image
+                src="/logo.png"
+                alt="Portfolio"
+                width={1188}
+                height={408}
+                priority
+                className="h-7 w-auto dark:invert"
+              />
             </Link>
             <ul className="hidden md:flex items-center gap-0.5">
               {NAV_ITEMS.map((item) => {
