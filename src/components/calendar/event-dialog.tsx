@@ -60,11 +60,13 @@ export function EventDialog({
   const [weekdays, setWeekdays] = useState<number[]>([]);
   const [startAtValue, setStartAtValue] = useState("");
   const [workspace, setWorkspace] = useState<TaskWorkspace>(event?.workspace ?? "dev");
+  const [error, setError] = useState<string | null>(null);
   const [isSaving, startSave] = useTransition();
   const [isDeleting, startDelete] = useTransition();
 
   useEffect(() => {
     if (!open) return;
+    setError(null);
     const isAllDay = event?.allDay ?? false;
     setAllDay(isAllDay);
     setWorkspace(event?.workspace ?? "dev");
@@ -123,11 +125,12 @@ export function EventDialog({
     : "";
 
   function handleSubmit(formData: FormData) {
+    setError(null);
     startSave(async () => {
       const result = event
         ? await updateEventAction(event.id, formData)
         : await createEventAction(formData);
-      if (result?.error) { console.error(result.error); return; }
+      if (result?.error) { setError(result.error); return; }
       onOpenChange(false);
     });
   }
@@ -135,9 +138,10 @@ export function EventDialog({
   function handleDelete() {
     if (!event) return;
     if (!window.confirm(`"${event.title}" 일정을 삭제할까요?`)) return;
+    setError(null);
     startDelete(async () => {
       const result = await deleteEventAction(event.id);
-      if (result?.error) { console.error(result.error); return; }
+      if (result?.error) { setError(result.error); return; }
       onOpenChange(false);
     });
   }
@@ -214,7 +218,7 @@ export function EventDialog({
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="event-start">시작</Label>
               <Input
@@ -257,6 +261,8 @@ export function EventDialog({
               </SelectContent>
             </Select>
           </div>
+
+          {error && <p className="text-xs text-destructive">{error}</p>}
 
           <DialogFooter>
             {isEditing && (

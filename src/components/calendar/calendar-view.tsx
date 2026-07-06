@@ -291,6 +291,7 @@ export function CalendarView({
           views={isMobile ? ["month", "agenda"] : ["month", "week"]}
           defaultView="month"
           selectable
+          longPressThreshold={50}
           popup
           onSelectEvent={(event) => {
             if (isMobile) selectDay(event.start);
