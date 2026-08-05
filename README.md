@@ -1,4 +1,4 @@
-# portpolio
+# Blog-Is-My
 
 ![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js&logoColor=white)
 ![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
