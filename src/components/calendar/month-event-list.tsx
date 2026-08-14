@@ -5,30 +5,12 @@ import { format, startOfDay } from "date-fns";
 import { ko } from "date-fns/locale";
 import { CalendarDays, ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { TASK_WORKSPACE_HEX, TASK_WORKSPACE_LABEL } from "@/lib/workspace";
 import type { EventModel } from "@/generated/prisma/models";
 import type { TaskWorkspace } from "@/generated/prisma/client";
 
-const WORKSPACE_COLOR: Record<TaskWorkspace, string> = {
-  dev: "#3b82f6",
-  competition: "#ec4899",
-  study: "#a855f7",
-  exam: "#ef4444",
-  appointment: "#f97316",
-  exercise: "#22c55e",
-  alba: "#eab308",
-  other: "#71717a",
-};
-
-const WORKSPACE_LABEL: Record<TaskWorkspace, string> = {
-  dev: "개발",
-  competition: "대회",
-  study: "공부",
-  exam: "시험",
-  appointment: "약속",
-  exercise: "운동",
-  alba: "알바",
-  other: "기타",
-};
+const WORKSPACE_COLOR = TASK_WORKSPACE_HEX;
+const WORKSPACE_LABEL = TASK_WORKSPACE_LABEL;
 
 const DAY_NAMES = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -186,8 +168,8 @@ function SeriesCard({
         type="button"
         onClick={() => setExpanded((v) => !v)}
         className={cn(
-          "flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left shadow-sm ring-1 transition-opacity",
-          past ? "bg-muted/50 ring-border/30 opacity-50" : "bg-card ring-border/50"
+          "focus-ring flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left shadow-sm ring-1 transition-all duration-150",
+          past ? "bg-muted/50 ring-border/30 opacity-50" : "bg-card ring-border/50 hover:shadow-md"
         )}
       >
         <div
@@ -277,13 +259,15 @@ export function MonthEventList({
       </div>
 
       {events.length === 0 ? (
-        <div className="flex h-20 items-center justify-center rounded-xl bg-muted/40 text-sm text-muted-foreground">
+        <div className="flex h-20 flex-col items-center justify-center gap-1 rounded-xl bg-muted/40 text-sm text-muted-foreground">
+          <CalendarDays className="size-4 text-muted-foreground/50" />
           이번 달 일정이 없습니다
         </div>
       ) : (
         <div className="flex flex-col gap-2">
           {upcoming.length === 0 && past.length > 0 && (
-            <div className="flex h-16 items-center justify-center rounded-xl bg-muted/40 text-sm text-muted-foreground">
+            <div className="flex h-16 items-center justify-center gap-2 rounded-xl bg-muted/40 text-sm text-muted-foreground">
+              <CalendarDays className="size-4 text-muted-foreground/50" />
               남은 일정이 없습니다
             </div>
           )}
@@ -301,7 +285,7 @@ export function MonthEventList({
               <button
                 type="button"
                 onClick={() => setShowPast((v) => !v)}
-                className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+                className="focus-ring flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
               >
                 {showPast ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
                 지난 일정 {past.length}건

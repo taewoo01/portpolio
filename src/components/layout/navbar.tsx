@@ -40,20 +40,26 @@ export function Navbar({ user }: { user: User | null }) {
 
   return (
     <>
+      <svg width="0" height="0" className="absolute" aria-hidden>
+        <filter id="logo-bold">
+          <feMorphology operator="dilate" radius="0.9" />
+        </filter>
+      </svg>
       <header className="sticky top-0 z-50 border-b border-border/60 bg-background/80 backdrop-blur-md">
-        <nav className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
-          <div className="flex items-center gap-6">
-            <Link href="/" className="flex items-center">
+        <nav className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center gap-8">
+            <Link href="/" className="focus-ring flex items-center rounded-lg">
               <Image
                 src="/logo.png"
-                alt="Portfolio"
-                width={1188}
-                height={408}
+                alt="Nook"
+                width={866}
+                height={288}
                 priority
-                className="h-7 w-auto dark:invert"
+                className="h-8 w-auto"
+                style={{ filter: "url(#logo-bold) var(--logo-invert)" }}
               />
             </Link>
-            <ul className="hidden md:flex items-center gap-0.5">
+            <ul className="hidden md:flex items-center gap-1">
               {NAV_ITEMS.map((item) => {
                 const active = isActive(pathname, item.href);
                 return (
@@ -68,7 +74,7 @@ export function Navbar({ user }: { user: User | null }) {
                     <Link
                       href={item.href}
                       className={cn(
-                        "relative z-10 block rounded-lg px-3 py-1.5 text-sm transition-colors duration-150",
+                        "focus-ring relative z-10 block rounded-lg px-3 py-1.5 text-sm transition-colors duration-150",
                         active
                           ? "font-semibold text-foreground"
                           : "font-medium text-muted-foreground hover:text-foreground"
@@ -86,7 +92,7 @@ export function Navbar({ user }: { user: User | null }) {
               type="button"
               onClick={openSearchPalette}
               aria-label="검색 (Ctrl+K)"
-              className="rounded-lg p-2 text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground"
+              className="focus-ring rounded-lg p-2 text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground"
             >
               <Search className="size-4" />
             </button>
@@ -106,7 +112,7 @@ export function Navbar({ user }: { user: User | null }) {
               <Link
                 key={item.href}
                 href={item.href}
-                className="relative flex flex-1 flex-col items-center justify-center gap-0.5 py-2"
+                className="focus-ring relative flex flex-1 flex-col items-center justify-center gap-0.5 py-2"
               >
                 {active && (
                   <motion.div

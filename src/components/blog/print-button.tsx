@@ -3,8 +3,10 @@
 import { useState } from "react";
 import { Printer, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/toast";
 
 export function PrintButton({ slug }: { slug: string }) {
+  const toast = useToast();
   const [loading, setLoading] = useState(false);
 
   async function handleExport() {
@@ -23,7 +25,7 @@ export function PrintButton({ slug }: { slug: string }) {
       a.click();
       URL.revokeObjectURL(url);
     } catch {
-      alert("PDF 생성에 실패했습니다.");
+      toast.add({ title: "PDF 생성에 실패했습니다.", type: "error" });
     } finally {
       setLoading(false);
     }

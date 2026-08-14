@@ -5,6 +5,8 @@ import { Navbar } from "@/components/layout/navbar";
 import { PageTransition } from "@/components/layout/page-transition";
 import { ThemeProvider } from "@/components/layout/theme-provider";
 import { SearchProvider } from "@/components/search/search-provider";
+import { ConfirmDialogProvider } from "@/components/ui/confirm-dialog";
+import { ToastProvider } from "@/components/ui/toast";
 import { FloatingTimerProvider } from "@/lib/floating-timer-context";
 import { TimerProvider } from "@/lib/timer-store";
 import { FloatingTimer } from "@/components/timer/floating-timer";
@@ -66,6 +68,7 @@ export default async function RootLayout({
     <html
       lang="ko"
       suppressHydrationWarning
+      data-scroll-behavior="smooth"
       className={`${geistMono.variable} h-full antialiased`}
     >
       <head>
@@ -76,17 +79,21 @@ export default async function RootLayout({
       </head>
       <body className="min-h-full flex flex-col">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          <SearchProvider categories={categories}>
-            <TimerProvider>
-            <FloatingTimerProvider>
-              <Navbar user={user} />
-              <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-8 pb-24 md:pb-8">
-                <PageTransition>{children}</PageTransition>
-              </main>
-              <FloatingTimer />
-            </FloatingTimerProvider>
-            </TimerProvider>
-          </SearchProvider>
+          <ToastProvider>
+            <ConfirmDialogProvider>
+              <SearchProvider categories={categories}>
+                <TimerProvider>
+                <FloatingTimerProvider>
+                  <Navbar user={user} />
+                  <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-8 pb-24 sm:px-6 md:pb-8 lg:px-8">
+                    <PageTransition>{children}</PageTransition>
+                  </main>
+                  <FloatingTimer />
+                </FloatingTimerProvider>
+                </TimerProvider>
+              </SearchProvider>
+            </ConfirmDialogProvider>
+          </ToastProvider>
         </ThemeProvider>
       </body>
     </html>

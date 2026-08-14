@@ -4,10 +4,10 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { getUser } from "@/lib/server/auth";
 
-export async function startSessionAction(title: string): Promise<string> {
+export async function startSessionAction(title: string, subjectId: string | null = null): Promise<string> {
   if (!(await getUser())) throw new Error("로그인이 필요합니다.");
   const session = await prisma.studySession.create({
-    data: { title, startAt: new Date() },
+    data: { title, startAt: new Date(), subjectId },
   });
   revalidatePath("/timer");
   return session.id;

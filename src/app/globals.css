@@ -13,6 +13,15 @@
   }
 }
 
+/* button.tsx의 focus-visible 처리를 raw button/link에도 동일하게 적용하기 위한 공유 유틸 */
+@utility focus-ring {
+  outline: none;
+  &:focus-visible {
+    border-color: var(--ring);
+    box-shadow: 0 0 0 3px color-mix(in oklch, var(--ring) 50%, transparent);
+  }
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -90,6 +99,12 @@
   --sidebar-accent-foreground: oklch(0.25 0.01 260);
   --sidebar-border: oklch(0.91 0.004 260);
   --sidebar-ring: oklch(0.62 0.214 255);
+
+  /* Wiki layout tokens — 폴더 사이드바와 문서 reading rail이 공유하는 폭 기준 */
+  --wiki-sidebar-width: 240px;
+  --wiki-reading-width: 760px;
+
+  --logo-invert: invert(0);
 }
 
 .dark {
@@ -124,6 +139,8 @@
   --sidebar-accent-foreground: oklch(0.96 0.003 260);
   --sidebar-border: oklch(1 0 0 / 8%);
   --sidebar-ring: oklch(0.65 0.214 255);
+
+  --logo-invert: invert(1);
 }
 
 @layer base {
@@ -136,6 +153,11 @@
   }
   html {
     @apply font-sans;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    html {
+      scroll-behavior: smooth;
+    }
   }
 }
 
@@ -243,38 +265,6 @@
     font-size: 13px;
     padding: 0 4px;
   }
-}
-
-@keyframes aurora-shift {
-  0%   { background-position: 0% 50%; }
-  50%  { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
-}
-
-.aurora-bg {
-  background: linear-gradient(
-    -45deg,
-    #1e40af,
-    #3182F6,
-    #7c3aed,
-    #0891b2,
-    #3182F6
-  );
-  background-size: 400% 400%;
-  animation: aurora-shift 18s ease infinite;
-}
-
-.dark .aurora-bg {
-  background: linear-gradient(
-    -45deg,
-    #1e3a8a,
-    #1d4ed8,
-    #5b21b6,
-    #0e7490,
-    #1d4ed8
-  );
-  background-size: 400% 400%;
-  animation: aurora-shift 18s ease infinite;
 }
 
 @media print {

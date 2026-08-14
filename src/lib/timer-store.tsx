@@ -12,18 +12,19 @@ const LS_KEY = "portpolio-timer";
 type TimerCtx = {
   sessionId: string | null;
   title: string;
+  subjectId: string | null;
   elapsed: number;
   paused: boolean;
   isPending: boolean;
-  start: (title: string) => void;
+  start: (title: string, subjectId?: string | null) => void;
   pause: () => void;
   resume: () => void;
   stop: () => void;
-  syncFromServer: (active: { id: string; title: string; startAt: Date } | null) => void;
+  syncFromServer: (active: { id: string; title: string; startAt: Date; subjectId: string | null } | null) => void;
 };
 
 const Ctx = createContext<TimerCtx>({
-  sessionId: null, title: "", elapsed: 0, paused: false, isPending: false,
+  sessionId: null, title: "", subjectId: null, elapsed: 0, paused: false, isPending: false,
   start: () => {}, pause: () => {}, resume: () => {}, stop: () => {}, syncFromServer: () => {},
 });
 
@@ -32,6 +33,7 @@ export function useTimer() { return useContext(Ctx); }
 export function TimerProvider({ children }: { children: React.ReactNode }) {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [title, setTitle] = useState("");
+  const [subjectId, setSubjectId] = useState<string | null>(null);
   const [elapsed, setElapsed] = useState(0);
   const [paused, setPaused] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -41,13 +43,14 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
   const channelRef = useRef<BroadcastChannel | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   // 최신 state를 비동기 콜백에서 stale closure 없이 읽기 위한 ref
-  const snapRef = useRef({ sessionId, title, elapsed, paused });
-  snapRef.current = { sessionId, title, elapsed, paused };
+  const snapRef = useRef({ sessionId, title, subjectId, elapsed, paused });
+  snapRef.current = { sessionId, title, subjectId, elapsed, paused };
 
   function save() {
     localStorage.setItem(LS_KEY, JSON.stringify({
       sessionId: snapRef.current.sessionId,
       title: snapRef.current.title,
+      subjectId: snapRef.current.subjectId,
       paused: snapRef.current.paused,
       startedAt: startedAtRef.current,
       accumulatedMs: accumulatedMsRef.current,
@@ -55,12 +58,12 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
   }
 
   function broadcast() {
-    const { sessionId: sid, paused: p, title: t } = snapRef.current;
+    const { sessionId: sid, paused: p, title: t, subjectId: subId } = snapRef.current;
     const e = startedAtRef.current !== null
       ? Math.floor((accumulatedMsRef.current + (Date.now() - startedAtRef.current)) / 1000)
       : Math.floor(accumulatedMsRef.current / 1000);
     channelRef.current?.postMessage({
-      type: "STATE", sessionId: sid, running: Boolean(sid), paused: p, elapsed: e, title: t,
+      type: "STATE", sessionId: sid, running: Boolean(sid), paused: p, elapsed: e, title: t, subjectId: subId,
       startedAt: startedAtRef.current, accumulatedMs: accumulatedMsRef.current,
     } satisfies TimerMessage);
   }
@@ -97,6 +100,7 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
       accumulatedMsRef.current = stored.accumulatedMs ?? 0;
       setSessionId(stored.sessionId ?? null);
       setTitle(stored.title ?? "");
+      setSubjectId(stored.subjectId ?? null);
       setPaused(stored.paused ?? false);
       const e = stored.startedAt
         ? Math.floor(((stored.accumulatedMs ?? 0) + (Date.now() - stored.startedAt)) / 1000)
@@ -124,6 +128,7 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
               paused: false,
               elapsed: currentElapsed,
               title: snapRef.current.title,
+              subjectId: snapRef.current.subjectId,
               startedAt: null,
               accumulatedMs: accumulatedMsRef.current,
               autoStop: true,
@@ -142,7 +147,7 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
   }, [sessionId]);
 
   // 상태 변경 시 float에 브로드캐스트 (리더만 — 비리더의 재방송 루프 방지)
-  useEffect(() => { if (isLeaderRef.current) broadcast(); }, [sessionId, paused, elapsed, title]);
+  useEffect(() => { if (isLeaderRef.current) broadcast(); }, [sessionId, paused, elapsed, title, subjectId]);
 
   // BroadcastChannel — 항상 마운트되어 있어서 어느 페이지에서든 커맨드 수신
   useEffect(() => {
@@ -156,13 +161,13 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
           if (!isLeaderRef.current) {
             startedAtRef.current = msg.startedAt;
             accumulatedMsRef.current = msg.accumulatedMs;
-            setSessionId(msg.sessionId); setTitle(msg.title);
+            setSessionId(msg.sessionId); setTitle(msg.title); setSubjectId(msg.subjectId);
             setPaused(msg.paused); setElapsed(msg.elapsed);
-            snapRef.current = { sessionId: msg.sessionId, title: msg.title, elapsed: msg.elapsed, paused: msg.paused };
+            snapRef.current = { sessionId: msg.sessionId, title: msg.title, subjectId: msg.subjectId, elapsed: msg.elapsed, paused: msg.paused };
           }
           break;
         case "REQUEST_STATE": if (isLeaderRef.current) broadcast(); break;
-        case "START":         if (isLeaderRef.current) actionsRef.current.start(msg.title); break;
+        case "START":         if (isLeaderRef.current) actionsRef.current.start(msg.title, msg.subjectId); break;
         case "PAUSE":         if (isLeaderRef.current) actionsRef.current.pause(); break;
         case "RESUME":        if (isLeaderRef.current) actionsRef.current.resume(); break;
         case "STOP":          if (isLeaderRef.current) actionsRef.current.stop(); break;
@@ -172,13 +177,18 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   // actionsRef: BroadcastChannel 핸들러에서 stale closure 없이 최신 로직 호출
-  const actionsRef = useRef({ start: (_t: string) => {}, pause: () => {}, resume: () => {}, stop: () => {} });
+  const actionsRef = useRef<{
+    start: (t: string, subjectId: string | null) => void;
+    pause: () => void;
+    resume: () => void;
+    stop: () => void;
+  }>({ start: () => {}, pause: () => {}, resume: () => {}, stop: () => {} });
   // await 이전에 동기적으로 세팅되는 중복 실행 가드 (더블 스타트 레이스 차단)
   const inFlightRef = useRef(false);
 
-  actionsRef.current.start = (t: string) => {
+  actionsRef.current.start = (t: string, subId: string | null) => {
     if (!isLeaderRef.current) {
-      channelRef.current?.postMessage({ type: "START", title: t } satisfies TimerMessage);
+      channelRef.current?.postMessage({ type: "START", title: t, subjectId: subId } satisfies TimerMessage);
       return;
     }
     const { sessionId: sid, paused: p } = snapRef.current;
@@ -186,11 +196,11 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
     inFlightRef.current = true;
     startTransition(async () => {
       try {
-        const id = await startSessionAction(t);
+        const id = await startSessionAction(t, subId);
         startedAtRef.current = Date.now();
         accumulatedMsRef.current = 0;
-        setSessionId(id); setTitle(t); setElapsed(0); setPaused(false);
-        snapRef.current = { sessionId: id, title: t, elapsed: 0, paused: false };
+        setSessionId(id); setTitle(t); setSubjectId(subId); setElapsed(0); setPaused(false);
+        snapRef.current = { sessionId: id, title: t, subjectId: subId, elapsed: 0, paused: false };
         save();
       } finally {
         inFlightRef.current = false;
@@ -228,12 +238,12 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
       channelRef.current?.postMessage({ type: "RESUME" } satisfies TimerMessage);
       return;
     }
-    const { paused: p, title: t } = snapRef.current;
+    const { paused: p, title: t, subjectId: subId } = snapRef.current;
     if (!p || inFlightRef.current) return;
     inFlightRef.current = true;
     startTransition(async () => {
       try {
-        const id = await startSessionAction(t);
+        const id = await startSessionAction(t, subId);
         startedAtRef.current = Date.now();
         setSessionId(id); setPaused(false);
         snapRef.current = { ...snapRef.current, sessionId: id, paused: false };
@@ -253,8 +263,8 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
     const reset = () => {
       startedAtRef.current = null;
       accumulatedMsRef.current = 0;
-      setSessionId(null); setTitle(""); setElapsed(0); setPaused(false);
-      snapRef.current = { sessionId: null, title: "", elapsed: 0, paused: false };
+      setSessionId(null); setTitle(""); setSubjectId(null); setElapsed(0); setPaused(false);
+      snapRef.current = { sessionId: null, title: "", subjectId: null, elapsed: 0, paused: false };
       localStorage.removeItem(LS_KEY);
     };
     if (sid) {
@@ -265,27 +275,27 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
   };
 
   // timer-widget이 서버에서 받은 active session을 context에 동기화
-  const syncFromServer = useCallback((active: { id: string; title: string; startAt: Date } | null) => {
+  const syncFromServer = useCallback((active: { id: string; title: string; startAt: Date; subjectId: string | null } | null) => {
     if (!active) return;
     if (snapRef.current.sessionId === active.id) return; // 이미 동기화됨
     const startedAt = new Date(active.startAt).getTime();
     const e = Math.floor((Date.now() - startedAt) / 1000);
     startedAtRef.current = startedAt;
     accumulatedMsRef.current = 0;
-    setSessionId(active.id); setTitle(active.title); setElapsed(e); setPaused(false);
-    snapRef.current = { sessionId: active.id, title: active.title, elapsed: e, paused: false };
+    setSessionId(active.id); setTitle(active.title); setSubjectId(active.subjectId); setElapsed(e); setPaused(false);
+    snapRef.current = { sessionId: active.id, title: active.title, subjectId: active.subjectId, elapsed: e, paused: false };
     localStorage.setItem(LS_KEY, JSON.stringify({
-      sessionId: active.id, title: active.title, paused: false, startedAt, accumulatedMs: 0,
+      sessionId: active.id, title: active.title, subjectId: active.subjectId, paused: false, startedAt, accumulatedMs: 0,
     }));
   }, []);
 
-  const start   = useCallback((t: string) => actionsRef.current.start(t), []);
+  const start   = useCallback((t: string, subId: string | null = null) => actionsRef.current.start(t, subId), []);
   const pause   = useCallback(() => actionsRef.current.pause(), []);
   const resume  = useCallback(() => actionsRef.current.resume(), []);
   const stop    = useCallback(() => actionsRef.current.stop(), []);
 
   return (
-    <Ctx.Provider value={{ sessionId, title, elapsed, paused, isPending, start, pause, resume, stop, syncFromServer }}>
+    <Ctx.Provider value={{ sessionId, title, subjectId, elapsed, paused, isPending, start, pause, resume, stop, syncFromServer }}>
       {children}
     </Ctx.Provider>
   );

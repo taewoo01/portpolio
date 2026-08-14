@@ -22,7 +22,7 @@ export function UserMenu({ user }: { user: User }) {
         onClick={handleLogout}
         disabled={isPending}
         aria-label="로그아웃"
-        className="rounded-md p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:opacity-50"
+        className="focus-ring rounded-md p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:opacity-50"
       >
         <LogOut className="size-4" />
       </button>

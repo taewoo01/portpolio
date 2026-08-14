@@ -1,5 +1,7 @@
 "use client";
 
+import { motion } from "framer-motion";
+import { FolderOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useWikiActions } from "./wiki-actions-provider";
 
@@ -7,7 +9,13 @@ export function EmptyWikiState() {
   const { isPending, openCreateFolder, openCreateDocument } = useWikiActions();
 
   return (
-    <div className="flex flex-col items-center justify-center gap-3 py-24 text-center">
+    <motion.div
+      initial={{ opacity: 0, y: 4 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.25, ease: "easeOut" }}
+      className="flex flex-col items-center justify-center gap-3 py-24 text-center"
+    >
+      <FolderOpen className="size-8 text-muted-foreground/40" />
       <h2 className="text-lg font-medium">아직 폴더나 문서가 없습니다</h2>
       <p className="text-sm text-muted-foreground">
         폴더를 만들어 정리하거나, 바로 문서를 작성해보세요.
@@ -25,6 +33,6 @@ export function EmptyWikiState() {
           문서 만들기
         </Button>
       </div>
-    </div>
+    </motion.div>
   );
 }

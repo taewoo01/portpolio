@@ -17,7 +17,7 @@ export function SearchResults({
           <Link
             href={`/wiki/${result.id}`}
             onClick={onNavigate}
-            className="flex flex-col gap-1.5 rounded-md px-3 py-3 transition-colors hover:bg-accent"
+            className="focus-ring flex flex-col gap-1.5 rounded-md px-3 py-3 transition-all duration-150 hover:translate-x-0.5 hover:bg-accent"
           >
             <div className="flex items-center gap-2">
               <span

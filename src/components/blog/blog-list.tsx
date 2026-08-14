@@ -1,13 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowDown, ArrowUp } from "lucide-react";
+import { useCallback, useDeferredValue, useEffect, useRef, useState } from "react";
+import { ArrowDown, ArrowUp, FileText, Search, X } from "lucide-react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { workspaceBadgeStyle } from "@/lib/wiki";
 import { USER_LABEL } from "@/lib/auth";
 import type { User } from "@/lib/auth";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -50,6 +51,16 @@ function summarize(post: { excerpt: string | null; content: string }) {
   return post.content.trim().slice(0, 120);
 }
 
+function buildSnippet(content: string, query: string): string {
+  const idx = content.toLowerCase().indexOf(query.toLowerCase());
+  if (idx === -1) return content.trim().slice(0, 120);
+
+  const radius = 50;
+  const start = Math.max(0, idx - radius);
+  const end = Math.min(content.length, idx + query.length + radius);
+  return `${start > 0 ? "…" : ""}${content.slice(start, end).trim()}${end < content.length ? "…" : ""}`;
+}
+
 export function BlogList({
   posts,
   categories,
@@ -61,9 +72,11 @@ export function BlogList({
 }) {
   const [filter, setFilter] = useState<Filter>(initialCategory);
   const [folderFilter, setFolderFilter] = useState<string | null>(null);
-  const [sort, setSort] = useState<Sort>("name");
-  const [dir, setDir] = useState<Dir>("asc");
+  const [sort, setSort] = useState<Sort>("latest");
+  const [dir, setDir] = useState<Dir>("desc");
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const [query, setQuery] = useState("");
+  const deferredQuery = useDeferredValue(query.trim());
 
   const chipScrollRef = useRef<HTMLDivElement>(null);
   const [fade, setFade] = useState({ left: false, right: false });
@@ -90,7 +103,16 @@ export function BlogList({
   const foldersInCategory = Array.from(
     new Map(categoryPosts.flatMap((p) => (p.folder ? [[p.folder.id, p.folder] as const] : []))).values()
   );
-  const filtered = folderFilter ? categoryPosts.filter((p) => p.folderId === folderFilter) : categoryPosts;
+  const folderFiltered = folderFilter ? categoryPosts.filter((p) => p.folderId === folderFilter) : categoryPosts;
+  const lowered = deferredQuery.toLowerCase();
+  const filtered = deferredQuery
+    ? folderFiltered.filter(
+        (p) =>
+          p.title.toLowerCase().includes(lowered) ||
+          (p.excerpt?.toLowerCase().includes(lowered) ?? false) ||
+          p.content.toLowerCase().includes(lowered)
+      )
+    : folderFiltered;
   const sorted = [...filtered].sort((a, b) => {
     let cmp: number;
     if (sort === "name") {
@@ -129,6 +151,11 @@ export function BlogList({
     setVisibleCount(PAGE_SIZE);
   }
 
+  function handleQueryChange(value: string) {
+    setQuery(value);
+    setVisibleCount(PAGE_SIZE);
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-start justify-between gap-3">
@@ -151,11 +178,31 @@ export function BlogList({
             type="button"
             onClick={toggleDir}
             aria-label={dir === "asc" ? "오름차순 (누르면 내림차순)" : "내림차순 (누르면 오름차순)"}
-            className="rounded-md border p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            className="focus-ring rounded-md border p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
           >
             {dir === "asc" ? <ArrowUp className="size-4" /> : <ArrowDown className="size-4" />}
           </button>
         </div>
+      </div>
+
+      <div className="relative">
+        <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          value={query}
+          onChange={(e) => handleQueryChange(e.target.value)}
+          placeholder="제목이나 본문으로 검색"
+          className="pl-9"
+        />
+        {query && (
+          <button
+            type="button"
+            onClick={() => handleQueryChange("")}
+            aria-label="검색어 지우기"
+            className="focus-ring absolute top-1/2 right-2 -translate-y-1/2 rounded p-1 text-muted-foreground hover:text-foreground"
+          >
+            <X className="size-3.5" />
+          </button>
+        )}
       </div>
 
       <div className="relative w-fit max-w-full">
@@ -171,7 +218,7 @@ export function BlogList({
               <button
                 key={f}
                 onClick={() => selectFilter(f)}
-                className="relative shrink-0 whitespace-nowrap rounded-md px-3 py-1.5 transition-colors duration-150"
+                className="focus-ring relative shrink-0 whitespace-nowrap rounded-md px-3 py-1.5 transition-colors duration-150"
               >
                 {filter === f && (
                   <motion.div
@@ -205,7 +252,7 @@ export function BlogList({
           <button
             onClick={() => selectFolder(null)}
             className={cn(
-              "rounded-full px-2.5 py-1 text-xs font-medium transition-colors",
+              "focus-ring rounded-full px-2.5 py-1 text-xs font-medium transition-colors",
               folderFilter === null
                 ? "bg-secondary text-secondary-foreground"
                 : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
@@ -218,7 +265,7 @@ export function BlogList({
               key={folder.id}
               onClick={() => selectFolder(folder.id)}
               className={cn(
-                "rounded-full px-2.5 py-1 text-xs font-medium transition-colors",
+                "focus-ring rounded-full px-2.5 py-1 text-xs font-medium transition-colors",
                 folderFilter === folder.id
                   ? "bg-secondary text-secondary-foreground"
                   : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
@@ -231,7 +278,10 @@ export function BlogList({
       )}
 
       {sorted.length === 0 ? (
-        <p className="py-12 text-center text-sm text-muted-foreground">해당 카테고리에 글이 없습니다.</p>
+        <div className="flex flex-col items-center gap-2 py-12 text-center text-sm text-muted-foreground">
+          <FileText className="size-6 text-muted-foreground/40" />
+          {deferredQuery ? `"${deferredQuery}"에 대한 검색 결과가 없습니다.` : "해당 카테고리에 글이 없습니다."}
+        </div>
       ) : (
         <>
           <ul className="flex flex-col divide-y">
@@ -239,7 +289,7 @@ export function BlogList({
               <li key={post.id}>
                 <Link
                   href={filter === "all" ? `/blog/${post.slug}` : `/blog/${post.slug}?from=${filter}`}
-                  className="flex flex-col gap-1.5 rounded-md px-3 py-4 transition-colors hover:bg-accent"
+                  className="focus-ring flex flex-col gap-1.5 rounded-md px-3 py-4 transition-all duration-150 hover:translate-x-0.5 hover:bg-accent"
                 >
                   <div className="flex items-center gap-2">
                     <span
@@ -255,7 +305,11 @@ export function BlogList({
                     )}
                     <span className="truncate text-lg font-medium">{post.title}</span>
                   </div>
-                  <p className="line-clamp-2 text-sm text-muted-foreground">{summarize(post)}</p>
+                  <p className="line-clamp-2 text-sm text-muted-foreground">
+                    {deferredQuery && !post.title.toLowerCase().includes(lowered)
+                      ? buildSnippet(post.content, deferredQuery)
+                      : summarize(post)}
+                  </p>
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     {post.createdBy && <span>{USER_LABEL[post.createdBy as User]}</span>}
                     <span>{post.publishedAt?.toLocaleDateString("ko-KR")} 발행</span>
@@ -267,7 +321,7 @@ export function BlogList({
           {visibleCount < sorted.length && (
             <button
               onClick={() => setVisibleCount((v) => v + PAGE_SIZE)}
-              className="mx-auto rounded-lg border px-4 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              className="focus-ring mx-auto rounded-lg border px-4 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
             >
               더보기
             </button>

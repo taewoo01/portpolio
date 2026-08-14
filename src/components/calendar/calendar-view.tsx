@@ -10,7 +10,7 @@ import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EventDialog } from "./event-dialog";
 import { ALL_USERS, USER_LABEL, USER_INITIAL, hiddenUsersFor } from "@/lib/auth";
-import type { TaskWorkspace } from "@/generated/prisma/client";
+import { TASK_WORKSPACE_HEX } from "@/lib/workspace";
 import type { EventModel } from "@/generated/prisma/models";
 import type { User } from "@/lib/auth";
 
@@ -22,16 +22,7 @@ const localizer = dateFnsLocalizer({
   locales: { ko },
 });
 
-const WORKSPACE_COLOR: Record<TaskWorkspace, string> = {
-  dev: "#3b82f6",
-  competition: "#ec4899",
-  study: "#a855f7",
-  exam: "#ef4444",
-  appointment: "#f97316",
-  exercise: "#22c55e",
-  alba: "#eab308",
-  other: "#71717a",
-};
+const WORKSPACE_COLOR = TASK_WORKSPACE_HEX;
 
 const MESSAGES = {
   next: "다음",
@@ -256,7 +247,7 @@ export function CalendarView({
             <button
               key={f}
               onClick={() => setFilter(f)}
-              className="relative shrink-0 whitespace-nowrap rounded-md px-2.5 py-1 transition-colors duration-150"
+              className="focus-ring relative shrink-0 whitespace-nowrap rounded-md px-2.5 py-1 transition-colors duration-150"
             >
               {filter === f && (
                 <motion.div
@@ -339,7 +330,7 @@ export function CalendarView({
             <button
               type="button"
               onClick={() => openCreateDialog(selectedDate)}
-              className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-primary transition-colors hover:bg-accent"
+              className="focus-ring flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-primary transition-colors hover:bg-accent"
             >
               <Plus className="size-3.5" />
               추가
@@ -354,7 +345,7 @@ export function CalendarView({
                   <button
                     type="button"
                     onClick={() => openEditDialog(e.resource)}
-                    className="flex w-full items-center gap-2.5 rounded-lg bg-card px-3 py-2.5 text-left shadow-sm ring-1 ring-border/50 transition-colors hover:bg-accent"
+                    className="focus-ring flex w-full items-center gap-2.5 rounded-xl bg-card px-3 py-2.5 text-left shadow-sm ring-1 ring-border/50 transition-all duration-150 hover:bg-accent hover:shadow-md"
                   >
                     <span
                       className="size-2 shrink-0 rounded-full"

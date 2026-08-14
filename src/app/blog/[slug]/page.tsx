@@ -28,47 +28,45 @@ export default async function BlogPostPage({
   const backHref = from ? `/blog?category=${from}` : "/blog";
 
   return (
-    <div className="mx-auto max-w-5xl">
-      <div className="flex flex-col gap-6 lg:flex-row lg:gap-12">
-        <article id="print-area" className="min-w-0 flex-1 flex flex-col gap-6">
-          <Link href={backHref} className="print:hidden text-sm text-muted-foreground hover:text-foreground">
-            ← 목록으로
-          </Link>
+    <div className="flex flex-col gap-6 lg:flex-row lg:gap-12">
+      <article id="print-area" className="min-w-0 flex-1 max-w-(--wiki-reading-width) flex flex-col gap-6">
+        <Link href={backHref} className="print:hidden text-sm text-muted-foreground hover:text-foreground">
+          ← 목록으로
+        </Link>
 
-          <header className="flex flex-col gap-2">
-            <div className="flex items-start justify-between gap-4">
-              <span
-                className="inline-flex w-fit shrink-0 items-center rounded-full px-2 py-0.5 text-xs font-medium"
-                style={workspaceBadgeStyle(post.workspaceCategory.color)}
-              >
-                {post.workspaceCategory.name}
-              </span>
-              <PrintButton slug={post.slug} />
-            </div>
-            <h1 className="text-3xl font-semibold">{post.title}</h1>
-            <p className="text-sm text-muted-foreground">
-              {post.createdBy && (
-                <span className="mr-2">{USER_LABEL[post.createdBy as User]}</span>
-              )}
-              {post.publishedAt?.toLocaleDateString("ko-KR")} 발행
-            </p>
-          </header>
+        <header className="flex flex-col gap-2">
+          <div className="flex items-start justify-between gap-4">
+            <span
+              className="inline-flex w-fit shrink-0 items-center rounded-full px-2 py-0.5 text-xs font-medium"
+              style={workspaceBadgeStyle(post.workspaceCategory.color)}
+            >
+              {post.workspaceCategory.name}
+            </span>
+            <PrintButton slug={post.slug} />
+          </div>
+          <h1 className="text-3xl font-semibold">{post.title}</h1>
+          <p className="text-sm text-muted-foreground">
+            {post.createdBy && (
+              <span className="mr-2">{USER_LABEL[post.createdBy as User]}</span>
+            )}
+            {post.publishedAt?.toLocaleDateString("ko-KR")} 발행
+          </p>
+        </header>
 
-          <MarkdownPreview content={post.content} lightbox />
+        <MarkdownPreview content={post.content} lightbox />
 
-          <Link href={backHref} className="print:hidden text-sm text-muted-foreground hover:text-foreground">
-            ← 목록으로
-          </Link>
+        <Link href={backHref} className="print:hidden text-sm text-muted-foreground hover:text-foreground">
+          ← 목록으로
+        </Link>
 
-          <footer className="hidden print:block mt-12 border-t pt-4 text-xs text-muted-foreground">
-            portpolio · /blog/{post.slug}
-          </footer>
-        </article>
+        <footer className="hidden print:block mt-12 border-t pt-4 text-xs text-muted-foreground">
+          portpolio · /blog/{post.slug}
+        </footer>
+      </article>
 
-        <aside className="print:hidden order-first lg:order-last w-full lg:w-52 lg:shrink-0">
-          <TableOfContents headings={headings} />
-        </aside>
-      </div>
+      <aside className="print:hidden order-first lg:order-last w-full lg:w-52 lg:shrink-0">
+        <TableOfContents headings={headings} />
+      </aside>
     </div>
   );
 }

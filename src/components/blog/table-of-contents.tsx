@@ -35,7 +35,7 @@ function TocNode({ node, activeId }: { node: HeadingNode; activeId: string | nul
           window.scrollTo({ top, behavior: "smooth" });
         }}
         className={cn(
-          "block truncate py-0.5 text-sm transition-colors hover:text-foreground",
+          "focus-ring block truncate rounded py-0.5 text-sm transition-colors hover:text-foreground",
           activeId === node.id
             ? "font-medium text-primary"
             : "text-muted-foreground"

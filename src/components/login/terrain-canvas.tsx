@@ -19,6 +19,10 @@ function Scene() {
 function Terrain() {
   const timeRef = useRef(0);
   const noise3D = useMemo(() => createNoise3D(), []);
+  const reduceMotion = useMemo(
+    () => typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+    []
+  );
 
   const geometry = useMemo(() => {
     const geo = new THREE.PlaneGeometry(24, 24, 80, 80);
@@ -27,6 +31,7 @@ function Terrain() {
   }, []);
 
   useFrame((_, delta) => {
+    if (reduceMotion) return;
     timeRef.current += delta * 0.18;
     const t = timeRef.current;
     const pos = geometry.attributes.position;

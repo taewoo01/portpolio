@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useTimer } from "@/lib/timer-store";
-import type { StudySessionModel } from "@/generated/prisma/models";
+import { SubjectSelect } from "./subject-select";
+import type { StudySessionModel, StudySubjectModel } from "@/generated/prisma/models";
 
 function formatDuration(seconds: number) {
   const h = Math.floor(seconds / 3600);
@@ -13,11 +14,19 @@ function formatDuration(seconds: number) {
   return [h, m, s].map((v) => String(v).padStart(2, "0")).join(":");
 }
 
-export function TimerWidget({ active }: { active: StudySessionModel | null }) {
-  const { sessionId, title, elapsed, paused, isPending, start, pause, resume, stop, syncFromServer } = useTimer();
+export function TimerWidget({
+  active,
+  subjects,
+}: {
+  active: StudySessionModel | null;
+  subjects: StudySubjectModel[];
+}) {
+  const { sessionId, title, subjectId, elapsed, paused, isPending, start, pause, resume, stop, syncFromServer } = useTimer();
   const [inputTitle, setInputTitle] = useState("");
+  const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
   const isRunning = Boolean(sessionId);
+  const activeSubject = subjects.find((s) => s.id === subjectId) ?? null;
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -34,7 +43,10 @@ export function TimerWidget({ active }: { active: StudySessionModel | null }) {
           {formatDuration(elapsed)}
         </div>
         {mounted && (isRunning || paused) && (
-          <p className="mt-2 text-sm text-muted-foreground">
+          <p className="mt-2 flex items-center justify-center gap-1.5 text-sm text-muted-foreground">
+            {activeSubject && (
+              <span className="size-2 shrink-0 rounded-full" style={{ backgroundColor: activeSubject.color }} />
+            )}
             {title}
             {paused && <span className="ml-2 text-yellow-500 text-xs">(일시정지)</span>}
           </p>
@@ -65,14 +77,15 @@ export function TimerWidget({ active }: { active: StudySessionModel | null }) {
 
       {(!mounted || (!isRunning && !paused)) && (
         <div className="flex gap-2">
+          <SubjectSelect subjects={subjects} value={selectedSubjectId} onChange={setSelectedSubjectId} disabled={isPending} />
           <Input
             placeholder="공부 내용을 입력하세요"
             value={inputTitle}
             onChange={(e) => setInputTitle(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && start(inputTitle.trim())}
+            onKeyDown={(e) => e.key === "Enter" && start(inputTitle.trim(), selectedSubjectId)}
             disabled={isPending}
           />
-          <Button onClick={() => start(inputTitle.trim())} disabled={isPending || !inputTitle.trim()} className="shrink-0">
+          <Button onClick={() => start(inputTitle.trim(), selectedSubjectId)} disabled={isPending || !inputTitle.trim()} className="shrink-0">
             시작
           </Button>
         </div>

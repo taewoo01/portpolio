@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { motion, AnimatePresence, useMotionValue } from "framer-motion";
+import { motion, AnimatePresence, useMotionValue, useReducedMotion } from "framer-motion";
 import { X, Minus } from "lucide-react";
 import { TIMER_CHANNEL_NAME } from "@/lib/timer-channel";
 import { useFloatingTimer } from "@/lib/floating-timer-context";
 import { useTimer } from "@/lib/timer-store";
+import { useTimerCharacterUrl, isAnimatedCharacter } from "@/lib/use-timer-character";
 import type { TimerMessage } from "@/lib/timer-channel";
 
 const STORAGE_KEY = "portpolio-timer-pos";
@@ -53,6 +54,8 @@ export function FloatingTimer() {
   const { isOpen, close } = useFloatingTimer();
   const { sessionId, title: timerTitle, elapsed: timerElapsed, paused: timerPaused, start, pause, resume, stop } = useTimer();
   const isRunning = Boolean(sessionId);
+  const characterUrl = useTimerCharacterUrl();
+  const reducedMotion = useReducedMotion();
 
   const [minimized, setMinimized] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -71,6 +74,7 @@ export function FloatingTimer() {
   const motionY = useMotionValue(0);
 
   const gifActive = isRunning && !timerPaused;
+  const breathing = gifActive && !reducedMotion && !isAnimatedCharacter(characterUrl);
 
   function showBubble(msg: string, duration = 3000) {
     if (bubbleTimerRef.current) clearTimeout(bubbleTimerRef.current);
@@ -119,13 +123,22 @@ export function FloatingTimer() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  function drawSnapshot() {
+    if (!canvasRef.current || !imgRef.current || !imgRef.current.complete) return;
+    const ctx = canvasRef.current.getContext("2d");
+    if (!ctx) return;
+    const img = imgRef.current;
+    ctx.clearRect(0, 0, GIF_SIZE, GIF_SIZE);
+    // object-cover와 동일한 결과를 내기 위해 중앙 기준으로 정사각형 크롭 후 채운다
+    const side = Math.min(img.naturalWidth, img.naturalHeight) || GIF_SIZE;
+    const sx = (img.naturalWidth - side) / 2;
+    const sy = (img.naturalHeight - side) / 2;
+    ctx.drawImage(img, sx, sy, side, side, 0, 0, GIF_SIZE, GIF_SIZE);
+  }
+
   useEffect(() => {
-    if (!gifActive && canvasRef.current && imgRef.current) {
-      const ctx = canvasRef.current.getContext("2d");
-      ctx?.clearRect(0, 0, GIF_SIZE, GIF_SIZE);
-      ctx?.drawImage(imgRef.current, 0, 0, GIF_SIZE, GIF_SIZE);
-    }
-  }, [gifActive]);
+    if (!gifActive) drawSnapshot();
+  }, [gifActive, characterUrl]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -200,8 +213,8 @@ export function FloatingTimer() {
           transition={{ duration: 0.18, ease: "easeOut" }}
           className={
             isMobile
-              ? "fixed bottom-16 left-0 right-0 z-9999 rounded-t-2xl bg-zinc-900 text-white shadow-2xl"
-              : "fixed left-0 top-0 z-9999 w-[280px] cursor-grab rounded-2xl bg-zinc-900 text-white shadow-2xl active:cursor-grabbing select-none"
+              ? "fixed bottom-16 left-0 right-0 z-50 rounded-t-2xl bg-zinc-900 text-white shadow-2xl"
+              : "fixed left-0 top-0 z-50 w-70 cursor-grab rounded-2xl bg-zinc-900 text-white shadow-2xl active:cursor-grabbing select-none"
           }
         >
           {/* 헤더 */}
@@ -240,20 +253,23 @@ export function FloatingTimer() {
                     {bubble && <SpeechBubble key={bubble} message={bubble} />}
                   </AnimatePresence>
 
-                  {/* 도라에몽 GIF */}
+                  {/* 타이머 캐릭터 */}
                   <div
                     className="relative cursor-pointer"
                     style={{ width: GIF_SIZE, height: GIF_SIZE }}
                     onClick={handleGifClick}
                   >
-                    <img
+                    <motion.img
                       ref={imgRef}
-                      src="/doraemon.gif"
-                      alt="doraemon"
+                      src={characterUrl}
+                      alt="타이머 캐릭터"
                       width={GIF_SIZE}
                       height={GIF_SIZE}
                       draggable={false}
-                      className={`absolute inset-0 rounded-xl object-contain transition-opacity duration-300 ${gifActive ? "opacity-100" : "opacity-0"}`}
+                      onLoad={drawSnapshot}
+                      animate={breathing ? { scale: [1, 1.035, 1], y: [0, -2, 0] } : { scale: 1, y: 0 }}
+                      transition={breathing ? { duration: 2.4, repeat: Infinity, ease: "easeInOut" } : { duration: 0.2 }}
+                      className={`absolute inset-0 rounded-xl object-cover transition-opacity duration-300 ${gifActive ? "opacity-100" : "opacity-0"}`}
                     />
                     <canvas
                       ref={canvasRef}

@@ -39,7 +39,7 @@ export function ThemeToggle() {
       onClick={cycleTheme}
       aria-label={`테마 전환 (현재: ${LABEL[current]})`}
       title={LABEL[current]}
-      className="rounded-md p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+      className="focus-ring rounded-md p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
     >
       {current === "dark" ? <Moon className="size-5" /> : <Sun className="size-5" />}
     </button>

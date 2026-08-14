@@ -37,7 +37,7 @@ export function TodayActivity({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="font-semibold">오늘 활동</h2>
+        <h2 className="text-lg font-medium">오늘 활동</h2>
         {totalSeconds > 0 && (
           <span className="text-sm text-muted-foreground">
             총 공부 시간: <span className="font-medium text-foreground">{formatDuration(totalSeconds)}</span>

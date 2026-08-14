@@ -129,7 +129,14 @@ export async function deleteDocumentAction(
     });
     if (existing && !isOwner(currentUser, existing.createdBy ?? null)) return { error: "권한이 없습니다." };
 
+    const post = await prisma.blogPost.findFirst({ where: { documentId }, select: { slug: true } });
+
     await prisma.document.delete({ where: { id: documentId } });
+
+    if (post) {
+      revalidatePath("/blog");
+      revalidatePath(`/blog/${post.slug}`);
+    }
     revalidatePath("/wiki");
   } catch (e) {
     console.error(e);

@@ -7,13 +7,14 @@ export type TimerStateMessage = {
   paused: boolean;
   elapsed: number;
   title: string;
+  subjectId: string | null;
   startedAt: number | null;   // 현재 구간 시작 타임스탬프(ms), 정지/일시정지면 null
   accumulatedMs: number;      // 이전 구간 누적 시간(ms)
   autoStop?: boolean;
 };
 
 export type TimerCommandMessage =
-  | { type: "START"; title: string }
+  | { type: "START"; title: string; subjectId: string | null }
   | { type: "PAUSE" }
   | { type: "RESUME" }
   | { type: "STOP" }

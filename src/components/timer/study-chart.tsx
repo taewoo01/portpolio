@@ -63,13 +63,13 @@ export function StudyChart({
   return (
     <div className="rounded-xl border bg-card p-6">
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="font-semibold">공부 통계</h2>
+        <h2 className="text-lg font-medium">공부 통계</h2>
         <div className="flex gap-1 rounded-md border p-0.5 text-sm">
           {(["week", "month"] as const).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
-              className={`rounded px-3 py-1 transition-colors ${
+              className={`focus-ring rounded px-3 py-1 transition-colors ${
                 tab === t
                   ? "bg-primary text-primary-foreground"
                   : "text-muted-foreground hover:text-foreground"

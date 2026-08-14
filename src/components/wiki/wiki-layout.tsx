@@ -76,7 +76,7 @@ export function WikiLayout({
           )}
         </AnimatePresence>
 
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1 max-w-(--wiki-reading-width)">
           <button
             type="button"
             onClick={() => setSidebarOpen(true)}

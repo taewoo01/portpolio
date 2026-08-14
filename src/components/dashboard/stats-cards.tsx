@@ -1,3 +1,5 @@
+import { CountUpNumber } from "./count-up-number";
+
 type Stat = {
   label: string;
   value: number;
@@ -23,12 +25,12 @@ export function StatsCards({
   ];
 
   return (
-    <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+    <section className="grid grid-cols-2 gap-4 sm:grid-cols-4">
       {stats.map((stat) => (
-        <div key={stat.label} className="rounded-2xl bg-card p-5 text-card-foreground shadow-sm">
-          <p className="text-xs text-muted-foreground">{stat.label}</p>
-          <p className="mt-1 text-2xl font-semibold">
-            {stat.value}
+        <div key={stat.label} className="rounded-2xl bg-card p-6 text-card-foreground shadow-sm">
+          <p className="text-xs font-medium text-muted-foreground">{stat.label}</p>
+          <p className="mt-2 text-2xl font-semibold tabular-nums leading-none">
+            <CountUpNumber value={stat.value} />
             {stat.unit && <span className="ml-1 text-sm font-normal text-muted-foreground">{stat.unit}</span>}
           </p>
         </div>

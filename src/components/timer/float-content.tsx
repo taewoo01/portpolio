@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { X } from "lucide-react";
 import { TIMER_CHANNEL_NAME } from "@/lib/timer-channel";
+import { useTimerCharacterUrl, isAnimatedCharacter } from "@/lib/use-timer-character";
 import type { TimerMessage } from "@/lib/timer-channel";
 
-const GIF_SIZE = 112;
+const GIF_SIZE = 160;
 
 const MESSAGES = {
   start:        ["같이 열심히 해보자! 💪", "집중 모드 ON! 🔥", "화이팅! ✨", "오늘도 파이팅! 🎉"],
@@ -75,6 +76,9 @@ export function FloatContent({ onClose, onStart, onPause, onResume, onStop }: Fl
   const prevPausedRef = useRef(false);
 
   const gifActive = running && !paused;
+  const characterUrl = useTimerCharacterUrl();
+  const reducedMotion = useReducedMotion();
+  const breathing = gifActive && !reducedMotion && !isAnimatedCharacter(characterUrl);
 
   function showBubble(msg: string, duration = 3000) {
     if (bubbleTimerRef.current) clearTimeout(bubbleTimerRef.current);
@@ -95,15 +99,17 @@ export function FloatContent({ onClose, onStart, onPause, onResume, onStop }: Fl
     }
   }, []);
 
+  function drawSnapshot() {
+    if (!canvasRef.current || !imgRef.current || !imgRef.current.complete) return;
+    const ctx = canvasRef.current.getContext("2d");
+    if (!ctx) return;
+    ctx.clearRect(0, 0, GIF_SIZE, GIF_SIZE);
+    ctx.drawImage(imgRef.current, 0, 0, GIF_SIZE, GIF_SIZE);
+  }
+
   useEffect(() => {
-    if (!gifActive && canvasRef.current && imgRef.current) {
-      const ctx = canvasRef.current.getContext("2d");
-      if (ctx) {
-        ctx.clearRect(0, 0, GIF_SIZE, GIF_SIZE);
-        ctx.drawImage(imgRef.current, 0, 0, GIF_SIZE, GIF_SIZE);
-      }
-    }
-  }, [gifActive]);
+    if (!gifActive) drawSnapshot();
+  }, [gifActive, characterUrl]);
 
   useEffect(() => {
     const channel = new BroadcastChannel(TIMER_CHANNEL_NAME);
@@ -169,7 +175,7 @@ export function FloatContent({ onClose, onStart, onPause, onResume, onStop }: Fl
     <div className="flex gap-2" style={{ WebkitAppRegion: "no-drag" }}>
       {!running && !paused && (
         <button
-          onClick={() => inputTitle.trim() && (onStart ? onStart(inputTitle.trim()) : send({ type: "START", title: inputTitle.trim() }))}
+          onClick={() => inputTitle.trim() && (onStart ? onStart(inputTitle.trim()) : send({ type: "START", title: inputTitle.trim(), subjectId: null }))}
           disabled={!inputTitle.trim()}
           className="rounded-xl bg-blue-600 px-5 py-2 text-sm font-semibold transition-colors hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-40"
         >
@@ -209,24 +215,27 @@ export function FloatContent({ onClose, onStart, onPause, onResume, onStop }: Fl
         {bubble && <SpeechBubble key={bubble} message={bubble} />}
       </AnimatePresence>
       <div
-        className="relative size-28 cursor-pointer"
+        className="relative size-40 cursor-pointer"
         onClick={handleGifClick}
       >
-      <img
+      <motion.img
         ref={imgRef}
-        src="/doraemon.gif"
-        alt="doraemon"
+        src={characterUrl}
+        alt="타이머 캐릭터"
         width={GIF_SIZE}
         height={GIF_SIZE}
         draggable={false}
-        className={`absolute inset-0 size-28 rounded-xl object-contain transition-opacity duration-300 ${gifActive ? "opacity-100" : "opacity-0"}`}
+        onLoad={drawSnapshot}
+        animate={breathing ? { scale: [1, 1.035, 1], y: [0, -3, 0] } : { scale: 1, y: 0 }}
+        transition={breathing ? { duration: 2.4, repeat: Infinity, ease: "easeInOut" } : { duration: 0.2 }}
+        className={`absolute inset-0 size-40 rounded-xl object-contain transition-opacity duration-300 ${gifActive ? "opacity-100" : "opacity-0"}`}
       />
       <canvas
         ref={canvasRef}
         width={GIF_SIZE}
         height={GIF_SIZE}
         className={[
-          "absolute inset-0 size-28 rounded-xl transition-all duration-300",
+          "absolute inset-0 size-40 rounded-xl transition-all duration-300",
           gifActive ? "opacity-0" : paused ? "grayscale opacity-60" : "opacity-40",
         ].join(" ")}
       />
@@ -271,7 +280,7 @@ export function FloatContent({ onClose, onStart, onPause, onResume, onStop }: Fl
                 value={inputTitle}
                 onChange={(e) => setInputTitle(e.target.value)}
                 onKeyDown={(e) =>
-                  e.key === "Enter" && inputTitle.trim() && (onStart ? onStart(inputTitle.trim()) : send({ type: "START", title: inputTitle.trim() }))
+                  e.key === "Enter" && inputTitle.trim() && (onStart ? onStart(inputTitle.trim()) : send({ type: "START", title: inputTitle.trim(), subjectId: null }))
                 }
                 placeholder="공부 내용 입력..."
                 style={{ WebkitAppRegion: "no-drag" }}
@@ -287,7 +296,7 @@ export function FloatContent({ onClose, onStart, onPause, onResume, onStop }: Fl
   }
 
   return (
-    <div className="fixed inset-0 z-[9999] flex flex-col bg-zinc-900 text-white select-none">
+    <div className="fixed inset-0 z-50 flex flex-col bg-zinc-900 text-white select-none">
       <div className="flex justify-end px-3 pt-3">
         <button
           onClick={onClose}
@@ -315,7 +324,7 @@ export function FloatContent({ onClose, onStart, onPause, onResume, onStop }: Fl
             value={inputTitle}
             onChange={(e) => setInputTitle(e.target.value)}
             onKeyDown={(e) =>
-              e.key === "Enter" && inputTitle.trim() && send({ type: "START", title: inputTitle.trim() })
+              e.key === "Enter" && inputTitle.trim() && send({ type: "START", title: inputTitle.trim(), subjectId: null })
             }
             placeholder="공부 내용 입력..."
             className="w-full max-w-[200px] rounded-xl border border-zinc-700 bg-zinc-800 px-3 py-2 text-center text-sm text-white placeholder-zinc-500 outline-none focus:border-blue-500"

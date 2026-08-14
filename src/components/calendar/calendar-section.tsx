@@ -26,12 +26,12 @@ export function CalendarSection({
   }, []);
 
   return (
-    <div className="grid gap-8 lg:grid-cols-[1fr_320px]">
-      <CalendarView events={events} currentUser={currentUser} onDateChange={handleDateChange} />
-      <div className="flex flex-col gap-6">
-        <TodoList todos={todos} currentUser={currentUser} />
+    <div className="flex flex-col gap-8">
+      <div className="grid gap-8 lg:grid-cols-[1fr_320px]">
+        <CalendarView events={events} currentUser={currentUser} onDateChange={handleDateChange} />
         <MonthEventList events={monthEvents} currentDate={currentDate} />
       </div>
+      <TodoList todos={todos} currentUser={currentUser} />
     </div>
   );
 }

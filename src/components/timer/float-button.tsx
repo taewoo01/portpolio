@@ -51,8 +51,8 @@ export function FloatButton() {
       let pipWindow: Window | null = null;
       try {
         pipWindow = await window.documentPictureInPicture.requestWindow({
-          width: 280,
-          height: 380,
+          width: 300,
+          height: 440,
           disallowReturnToOpener: false,
         });
       } catch {

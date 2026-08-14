@@ -110,14 +110,27 @@ model Todo {
   @@map("todos")
 }
 
+model StudySubject {
+  id        String         @id @default(cuid())
+  name      String
+  color     String         @default("#3182F6")
+  sortOrder Int            @default(0) @map("sort_order")
+  createdAt DateTime       @default(now()) @map("created_at")
+  sessions  StudySession[]
+
+  @@map("study_subjects")
+}
+
 model StudySession {
-  id        String    @id @default(cuid())
+  id        String        @id @default(cuid())
   title     String
-  startAt   DateTime  @map("start_at")
-  endAt     DateTime? @map("end_at")
+  startAt   DateTime      @map("start_at")
+  endAt     DateTime?     @map("end_at")
   duration  Int?
-  createdAt DateTime  @default(now()) @map("created_at")
-  updatedAt DateTime  @updatedAt @map("updated_at")
+  subjectId String?       @map("subject_id")
+  subject   StudySubject? @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+  createdAt DateTime      @default(now()) @map("created_at")
+  updatedAt DateTime      @updatedAt @map("updated_at")
 
   @@map("study_sessions")
 }
@@ -133,14 +146,17 @@ model LoginAttempt {
 }
 
 model AboutProfile {
-  id        String   @id @default(cuid())
-  owner     String   @unique
-  name      String
-  role      String
-  bio       String[]
-  skills    String[]
-  links     Json     @default("[]")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id                    String   @id @default(cuid())
+  owner                 String   @unique
+  name                  String
+  role                  String
+  bio                   String[]
+  skills                String[]
+  links                 Json     @default("[]")
+  avatarUrl             String?  @map("avatar_url")
+  timerCharacterUrl     String?  @map("timer_character_url")
+  timerCharacterEnabled Boolean  @default(true) @map("timer_character_enabled")
+  updatedAt             DateTime @updatedAt @map("updated_at")
 
   @@map("about_profiles")
 }
@@ -148,7 +164,7 @@ model AboutProfile {
 model BlogPost {
   id                  String            @id @default(cuid())
   documentId          String?           @map("document_id")
-  document            Document?         @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  document            Document?         @relation(fields: [documentId], references: [id], onDelete: Cascade)
   workspaceCategoryId String            @map("workspace_category_id")
   workspaceCategory   WorkspaceCategory @relation(fields: [workspaceCategoryId], references: [id])
   folderId            String?           @map("folder_id")

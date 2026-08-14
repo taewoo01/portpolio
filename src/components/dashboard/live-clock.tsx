@@ -27,11 +27,11 @@ export function LiveClock() {
   });
 
   return (
-    <div className="text-right text-white/90">
+    <div className="text-right text-primary-foreground">
       <p className="font-mono text-4xl font-bold tabular-nums tracking-tight leading-none">
         {time}
       </p>
-      <p className="mt-1 text-sm text-white/60">{date}</p>
+      <p className="mt-1 text-sm text-primary-foreground/70">{date}</p>
     </div>
   );
 }

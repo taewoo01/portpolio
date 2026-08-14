@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   title: "About",
 };
 
-const DEFAULTS: Record<string, { name: string; role: string; bio: string[]; skills: string[]; links: SiteLink[] }> = {
+const DEFAULTS: Record<string, { name: string; role: string; bio: string[]; skills: string[]; links: SiteLink[]; avatarUrl: string | null }> = {
   taewoo: {
     name: USER_LABEL.taewoo,
     role: "개발자",
@@ -20,6 +20,7 @@ const DEFAULTS: Record<string, { name: string; role: string; bio: string[]; skil
       { label: "Blog", href: "/blog" },
       { label: "Email", href: "mailto:you@example.com" },
     ],
+    avatarUrl: null,
   },
   yujin: {
     name: USER_LABEL.yujin,
@@ -30,6 +31,7 @@ const DEFAULTS: Record<string, { name: string; role: string; bio: string[]; skil
       { label: "Blog", href: "/blog" },
       { label: "Email", href: "mailto:you@example.com" },
     ],
+    avatarUrl: null,
   },
   hoyoung: {
     name: USER_LABEL.hoyoung,
@@ -40,6 +42,7 @@ const DEFAULTS: Record<string, { name: string; role: string; bio: string[]; skil
       { label: "Blog", href: "/blog" },
       { label: "Email", href: "mailto:you@example.com" },
     ],
+    avatarUrl: null,
   },
   donghyun: {
     name: USER_LABEL.donghyun,
@@ -50,6 +53,7 @@ const DEFAULTS: Record<string, { name: string; role: string; bio: string[]; skil
       { label: "Blog", href: "/blog" },
       { label: "Email", href: "mailto:you@example.com" },
     ],
+    avatarUrl: null,
   },
 };
 
@@ -66,8 +70,9 @@ export default async function AboutPage() {
         bio: saved.bio,
         skills: saved.skills,
         links: saved.links as SiteLink[],
+        avatarUrl: saved.avatarUrl,
       }
     : DEFAULTS[owner];
 
-  return <AboutEditor profile={profile} canEdit={!!currentUser} />;
+  return <AboutEditor profile={profile} canEdit={!!currentUser} isUnedited={!saved} />;
 }

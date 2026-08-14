@@ -29,6 +29,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useWikiActions } from "./wiki-actions-provider";
+import { useToast } from "@/components/ui/toast";
 import { moveFolderAction } from "@/lib/actions/folders";
 import { moveDocumentAction } from "@/lib/actions/documents";
 import { STATUS_DOT_CLASS, STATUS_LABEL, workspaceBadgeStyle } from "@/lib/wiki";
@@ -77,6 +78,7 @@ export function FolderSidebar({
   onCategorySelect: (id: string | null) => void;
 }) {
   const router = useRouter();
+  const toast = useToast();
   const { isPending, openCreateFolder, openCreateDocument, openCreateCategory, openEditCategory, openDeleteCategory } = useWikiActions();
   const [, startMove] = useTransition();
   const [dragLabel, setDragLabel] = useState<DragLabel | null>(null);
@@ -115,7 +117,7 @@ export function FolderSidebar({
     if (!activeData || !overData) return;
 
     if (overData.kind === "folder" && activeData.categoryId !== overData.categoryId) {
-      alert("같은 카테고리 안에서만 이동할 수 있습니다.");
+      toast.add({ title: "같은 카테고리 안에서만 이동할 수 있습니다.", type: "error" });
       return;
     }
 
@@ -124,7 +126,7 @@ export function FolderSidebar({
     if (activeData.kind === "document") {
       startMove(async () => {
         const result = await moveDocumentAction(activeData.documentId, targetFolderId);
-        if (result?.error) { alert(result.error); return; }
+        if (result?.error) { toast.add({ title: result.error, type: "error" }); return; }
         router.refresh();
       });
       return;
@@ -134,27 +136,27 @@ export function FolderSidebar({
     if (targetFolderId) {
       const draggedNode = findFolderNode(tree.folders, activeData.folderId);
       if (draggedNode && collectDescendantFolderIds(draggedNode).has(targetFolderId)) {
-        alert("폴더를 하위 폴더 안으로 이동할 수 없습니다.");
+        toast.add({ title: "폴더를 하위 폴더 안으로 이동할 수 없습니다.", type: "error" });
         return;
       }
     }
 
     startMove(async () => {
       const result = await moveFolderAction(activeData.folderId, targetFolderId);
-      if (result?.error) { alert(result.error); return; }
+      if (result?.error) { toast.add({ title: result.error, type: "error" }); return; }
       router.refresh();
     });
   }
 
   return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-      <aside className="relative w-[240px] shrink-0 border-r pr-3 flex flex-col gap-3">
+      <aside className="relative w-(--wiki-sidebar-width) shrink-0 border-r pr-3 flex flex-col gap-3">
         {/* Category list */}
         <div className="flex flex-col gap-0.5">
           <button
             onClick={() => onCategorySelect(null)}
             className={cn(
-              "flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm transition-colors",
+              "focus-ring flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm transition-colors",
               selectedCategoryId === null
                 ? "bg-accent font-semibold text-accent-foreground"
                 : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
@@ -167,7 +169,7 @@ export function FolderSidebar({
               <button
                 onClick={() => onCategorySelect(cat.id)}
                 className={cn(
-                  "flex flex-1 items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm transition-colors",
+                  "focus-ring flex flex-1 items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm transition-colors",
                   selectedCategoryId === cat.id
                     ? "bg-accent font-semibold text-accent-foreground"
                     : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
@@ -180,18 +182,20 @@ export function FolderSidebar({
                 <button
                   type="button"
                   title="수정"
+                  aria-label={`${cat.name} 카테고리 수정`}
                   onClick={() => openEditCategory(cat.id, cat.name, cat.color)}
                   disabled={isPending}
-                  className="rounded p-0.5 text-muted-foreground hover:text-foreground"
+                  className="focus-ring rounded p-1.5 text-muted-foreground hover:text-foreground"
                 >
                   <Pencil className="size-3" />
                 </button>
                 <button
                   type="button"
                   title="삭제"
+                  aria-label={`${cat.name} 카테고리 삭제`}
                   onClick={() => openDeleteCategory(cat.id, cat.name)}
                   disabled={isPending}
-                  className="rounded p-0.5 text-muted-foreground hover:text-destructive"
+                  className="focus-ring rounded p-1.5 text-muted-foreground hover:text-destructive"
                 >
                   <Trash2 className="size-3" />
                 </button>
@@ -201,7 +205,7 @@ export function FolderSidebar({
           <button
             onClick={openCreateCategory}
             disabled={isPending}
-            className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs text-muted-foreground/70 hover:text-muted-foreground transition-colors"
+            className="focus-ring flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs text-muted-foreground/70 hover:text-muted-foreground transition-colors"
           >
             <Plus className="size-3" />
             카테고리 추가
@@ -217,6 +221,7 @@ export function FolderSidebar({
             variant="ghost"
             size="icon-sm"
             title="새 폴더"
+            aria-label="새 폴더"
             onClick={() => openCreateFolder(null)}
             disabled={isPending}
           >
@@ -227,6 +232,7 @@ export function FolderSidebar({
             variant="ghost"
             size="icon-sm"
             title="새 문서"
+            aria-label="새 문서"
             onClick={() => openCreateDocument(null)}
             disabled={isPending}
           >
@@ -337,7 +343,7 @@ function DocumentLink({
       onClick={onNavigate}
       style={{ paddingLeft: `${depth * 16 + 4}px` }}
       className={cn(
-        "flex items-center gap-1.5 truncate rounded-md py-1.5 pr-2 transition-colors hover:bg-accent hover:text-accent-foreground",
+        "focus-ring flex items-center gap-1.5 truncate rounded-md py-1.5 pr-2 transition-colors hover:bg-accent hover:text-accent-foreground",
         active ? "bg-accent font-medium text-accent-foreground" : "text-muted-foreground",
         isDragging && "opacity-40"
       )}
@@ -422,7 +428,7 @@ function FolderNodeItem({
         onClick={() => setOpen((v) => !v)}
         style={{ paddingLeft: `${depth * 16 + 4}px` }}
         className={cn(
-          "group flex items-center gap-1 rounded-md py-1.5 pr-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+          "focus-ring group flex items-center gap-1 rounded-md py-1.5 pr-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground",
           isDragging && "opacity-40",
           isOver && "bg-accent ring-1 ring-primary/50"
         )}
@@ -443,22 +449,24 @@ function FolderNodeItem({
             {node.workspaceCategory.name}
           </span>
         )}
-        <span className="ml-auto flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+        <span className="ml-auto flex shrink-0 items-center gap-0.5 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100">
           <button
             type="button"
             title="하위 폴더 추가"
+            aria-label={`${node.name} 폴더에 하위 폴더 추가`}
             onClick={withStop(() => openCreateFolder(node.id, node.workspaceCategory.id))}
             disabled={isPending}
-            className="rounded p-0.5 hover:bg-background"
+            className="focus-ring rounded p-1.5 hover:bg-background"
           >
             <FolderPlus className="size-3.5" />
           </button>
           <button
             type="button"
             title="새 문서"
+            aria-label={`${node.name} 폴더에 새 문서 추가`}
             onClick={withStop(() => openCreateDocument(node.id, node.workspaceCategory.id))}
             disabled={isPending}
-            className="rounded p-0.5 hover:bg-background"
+            className="focus-ring rounded p-1.5 hover:bg-background"
           >
             <FilePlus className="size-3.5" />
           </button>
@@ -467,18 +475,20 @@ function FolderNodeItem({
               <button
                 type="button"
                 title="이름 변경"
+                aria-label={`${node.name} 폴더 이름 변경`}
                 onClick={handleRename}
                 disabled={isPending}
-                className="rounded p-0.5 hover:bg-background"
+                className="focus-ring rounded p-1.5 hover:bg-background"
               >
                 <Pencil className="size-3.5" />
               </button>
               <button
                 type="button"
                 title="삭제"
+                aria-label={`${node.name} 폴더 삭제`}
                 onClick={handleDelete}
                 disabled={isPending}
-                className="rounded p-0.5 hover:bg-background"
+                className="focus-ring rounded p-1.5 hover:bg-background"
               >
                 <Trash2 className="size-3.5" />
               </button>
@@ -518,7 +528,7 @@ function FolderNodeItem({
               openCreateDocument(node.id, node.workspaceCategory.id);
             }}
             disabled={isPending}
-            className="flex w-full items-center gap-1.5 rounded-md py-1.5 pr-2 text-muted-foreground/60 hover:bg-accent hover:text-accent-foreground"
+            className="focus-ring flex w-full items-center gap-1.5 rounded-md py-1.5 pr-2 text-muted-foreground/60 hover:bg-accent hover:text-accent-foreground"
           >
             <FilePlus className="size-3.5 shrink-0" />
             <span className="text-xs">새 문서</span>

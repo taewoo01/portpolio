@@ -23,7 +23,9 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { createEventAction, deleteEventAction, updateEventAction } from "@/lib/actions/events";
+import { createTodoAction } from "@/lib/actions/todos";
 import { TASK_WORKSPACE_LABEL, TASK_WORKSPACE_VALUES } from "@/lib/workspace";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import type { TaskWorkspace } from "@/generated/prisma/client";
 import type { EventModel } from "@/generated/prisma/models";
 import type { User } from "@/lib/auth";
@@ -47,18 +49,23 @@ export function EventDialog({
   onOpenChange,
   event,
   defaultStart,
+  defaultType = "event",
   currentUser,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   event: EventModel | null;
   defaultStart: Date | null;
+  defaultType?: "event" | "todo";
   currentUser: User | null;
 }) {
+  const confirm = useConfirm();
+  const [itemType, setItemType] = useState<"event" | "todo">(defaultType);
   const [allDay, setAllDay] = useState(event?.allDay ?? false);
   const [weeklyEnabled, setWeeklyEnabled] = useState(false);
   const [weekdays, setWeekdays] = useState<number[]>([]);
   const [startAtValue, setStartAtValue] = useState("");
+  const [todoDueDate, setTodoDueDate] = useState("");
   const [workspace, setWorkspace] = useState<TaskWorkspace>(event?.workspace ?? "dev");
   const [error, setError] = useState<string | null>(null);
   const [isSaving, startSave] = useTransition();
@@ -67,6 +74,7 @@ export function EventDialog({
   useEffect(() => {
     if (!open) return;
     setError(null);
+    setItemType(event ? "event" : defaultType);
     const isAllDay = event?.allDay ?? false;
     setAllDay(isAllDay);
     setWorkspace(event?.workspace ?? "dev");
@@ -75,8 +83,10 @@ export function EventDialog({
     if (base) {
       const local = toLocalInputValue(base);
       setStartAtValue(isAllDay ? local.slice(0, 10) : local);
+      setTodoDueDate(local.slice(0, 10));
     } else {
       setStartAtValue("");
+      setTodoDueDate("");
     }
 
     const r = event?.recurrence ?? null;
@@ -87,7 +97,7 @@ export function EventDialog({
       setWeeklyEnabled(false);
       setWeekdays([]);
     }
-  }, [event, open, defaultStart]);
+  }, [event, open, defaultStart, defaultType]);
 
   function handleAllDayChange(checked: boolean) {
     setAllDay(checked);
@@ -129,15 +139,23 @@ export function EventDialog({
     startSave(async () => {
       const result = event
         ? await updateEventAction(event.id, formData)
+        : itemType === "todo"
+        ? await createTodoAction(formData)
         : await createEventAction(formData);
       if (result?.error) { setError(result.error); return; }
       onOpenChange(false);
     });
   }
 
-  function handleDelete() {
+  async function handleDelete() {
     if (!event) return;
-    if (!window.confirm(`"${event.title}" 일정을 삭제할까요?`)) return;
+    const ok = await confirm({
+      title: "일정 삭제",
+      description: `"${event.title}" 일정을 삭제할까요?`,
+      confirmText: "삭제",
+      variant: "destructive",
+    });
+    if (!ok) return;
     setError(null);
     startDelete(async () => {
       const result = await deleteEventAction(event.id);
@@ -150,27 +168,69 @@ export function EventDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{isEditing ? "일정 수정" : "일정 추가"}</DialogTitle>
+          <DialogTitle>
+            {isEditing ? "일정 수정" : itemType === "todo" ? "할 일 추가" : "일정 추가"}
+          </DialogTitle>
         </DialogHeader>
+
+        {!isEditing && (
+          <div className="flex gap-1 rounded-lg bg-muted p-1">
+            {(["event", "todo"] as const).map((type) => (
+              <button
+                key={type}
+                type="button"
+                onClick={() => setItemType(type)}
+                className={cn(
+                  "flex-1 rounded-md py-1.5 text-sm font-medium transition-colors",
+                  itemType === type
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {type === "event" ? "일정" : "할 일"}
+              </button>
+            ))}
+          </div>
+        )}
 
         <form action={handleSubmit} className="flex flex-col gap-4">
           <input type="hidden" name="tzOffset" value={String(new Date().getTimezoneOffset())} readOnly />
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="event-title">제목</Label>
-            <Input id="event-title" name="title" defaultValue={event?.title} placeholder="일정 제목" required />
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="event-description">설명</Label>
-            <Textarea
-              id="event-description"
-              name="description"
-              defaultValue={event?.description ?? ""}
-              placeholder="설명 (선택)"
-              className="min-h-20"
+            <Input
+              id="event-title"
+              name="title"
+              defaultValue={event?.title}
+              placeholder={itemType === "todo" ? "할 일 제목" : "일정 제목"}
+              required
             />
           </div>
 
+          {itemType === "todo" ? (
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="todo-dueDate">마감일 (선택)</Label>
+              <Input
+                id="todo-dueDate"
+                name="dueDate"
+                type="date"
+                value={todoDueDate}
+                onChange={(e) => setTodoDueDate(e.target.value)}
+              />
+            </div>
+          ) : (
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="event-description">설명</Label>
+              <Textarea
+                id="event-description"
+                name="description"
+                defaultValue={event?.description ?? ""}
+                placeholder="설명 (선택)"
+                className="min-h-20"
+              />
+            </div>
+          )}
+
+          {itemType === "event" && (
           <div className="flex gap-6">
             <div className="flex items-center gap-2">
               <Checkbox
@@ -191,8 +251,9 @@ export function EventDialog({
               <Label htmlFor="event-recurrence">매주 반복</Label>
             </div>
           </div>
+          )}
 
-          {weeklyEnabled && (
+          {itemType === "event" && weeklyEnabled && (
             <div className="flex flex-col gap-1.5">
               <Label>반복 요일</Label>
               <div className="flex gap-1.5">
@@ -218,6 +279,7 @@ export function EventDialog({
             </div>
           )}
 
+          {itemType === "event" && (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="event-start">시작</Label>
@@ -241,6 +303,7 @@ export function EventDialog({
               />
             </div>
           </div>
+          )}
 
           <div className="flex flex-col gap-1.5">
             <Label>워크스페이스</Label>
@@ -270,7 +333,10 @@ export function EventDialog({
                 삭제
               </Button>
             )}
-            <Button type="submit" disabled={isSaving || (weeklyEnabled && weekdays.length === 0)}>
+            <Button
+              type="submit"
+              disabled={isSaving || (itemType === "event" && weeklyEnabled && weekdays.length === 0)}
+            >
               {isEditing ? "저장" : "추가"}
             </Button>
           </DialogFooter>

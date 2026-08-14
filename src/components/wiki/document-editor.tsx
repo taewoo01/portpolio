@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { updateDocumentAction, deleteDocumentAction } from "@/lib/actions/documents";
+import { useConfirm } from "@/components/ui/confirm-dialog";
+import { useToast } from "@/components/ui/toast";
 import { DocumentMeta, StatusBadge } from "./document-meta";
 import { MarkdownEditor } from "./markdown-editor";
 import { MarkdownPreview } from "./markdown-preview";
@@ -56,6 +58,7 @@ function rewriteGitHubUrls(markdown: string, data: { path: string; download_url:
 }
 
 function GitHubImport({ content, onImport }: { content: string; onImport: (md: string) => void }) {
+  const confirm = useConfirm();
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -67,7 +70,7 @@ function GitHubImport({ content, onImport }: { content: string; onImport: (md: s
       return;
     }
 
-    if (content.trim() && !window.confirm("현재 내용을 README로 덮어쓸까요?")) return;
+    if (content.trim() && !(await confirm({ description: "현재 내용을 README로 덮어쓸까요?" }))) return;
 
     setLoading(true);
     setError(null);
@@ -124,6 +127,8 @@ export function DocumentEditor({
   currentUser: User | null;
 }) {
   const router = useRouter();
+  const confirm = useConfirm();
+  const toast = useToast();
   const [isDeleting, startDelete] = useTransition();
   const [isSaving, startSave] = useTransition();
   const [isPublishDialogOpen, setPublishDialogOpen] = useState(false);
@@ -136,17 +141,24 @@ export function DocumentEditor({
   function handleSubmit(formData: FormData) {
     startSave(async () => {
       const result = await updateDocumentAction(document.workspaceCategoryId, document.id, formData);
-      if (result?.error) { console.error(result.error); return; }
+      if (result?.error) { toast.add({ title: result.error, type: "error" }); return; }
       router.refresh();
+      toast.add({ title: "문서를 저장했습니다.", type: "success" });
       if (status === "done") setIsEditing(false);
     });
   }
 
-  function handleDelete() {
-    if (!window.confirm(`"${document.title}" 문서를 삭제할까요? 되돌릴 수 없습니다.`)) return;
+  async function handleDelete() {
+    const ok = await confirm({
+      title: "문서 삭제",
+      description: `"${document.title}" 문서를 삭제할까요? 되돌릴 수 없습니다.`,
+      confirmText: "삭제",
+      variant: "destructive",
+    });
+    if (!ok) return;
     startDelete(async () => {
       const result = await deleteDocumentAction(document.workspaceCategoryId, document.id);
-      if (result?.error) { console.error(result.error); return; }
+      if (result?.error) { toast.add({ title: result.error, type: "error" }); return; }
       router.push("/wiki");
       router.refresh();
     });

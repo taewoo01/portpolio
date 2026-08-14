@@ -66,7 +66,7 @@ export default function LoginPage() {
       <div className="flex flex-col items-center gap-8 rounded-2xl border border-white/10 bg-white/5 px-10 py-12 shadow-2xl backdrop-blur-md">
         <div className="text-center">
           <h1 className="text-3xl font-bold text-white">portpolio</h1>
-          <p className="mt-1 text-sm text-white/50">PIN 4자리를 입력하세요</p>
+          <p className="mt-1 text-sm text-white/70">PIN 4자리를 입력하세요</p>
         </div>
 
         <div className="flex gap-3">
@@ -74,7 +74,7 @@ export default function LoginPage() {
             <input
               key={i}
               ref={refs[i]}
-              type="tel"
+              type="password"
               inputMode="numeric"
               maxLength={1}
               value={digit}
@@ -82,18 +82,18 @@ export default function LoginPage() {
               onKeyDown={(e) => handleKeyDown(i, e)}
               disabled={isPending}
               autoFocus={i === 0}
+              aria-label={`PIN ${i + 1}번째 자리`}
               className="size-14 rounded-xl border border-white/20 bg-white/10 text-center text-2xl font-bold text-white tabular-nums backdrop-blur-sm transition-colors focus:border-blue-400/60 focus:outline-none focus:ring-1 focus:ring-blue-400/40 disabled:opacity-50"
-              style={{ WebkitTextSecurity: "disc" } as React.CSSProperties}
             />
           ))}
         </div>
 
         {error && (
-          <p className="text-sm text-red-400">{error}</p>
+          <p className="text-sm text-red-400" role="alert">{error}</p>
         )}
 
         {isPending && (
-          <p className="text-sm text-white/40">확인 중...</p>
+          <p className="text-sm text-white/60">확인 중...</p>
         )}
       </div>
     </div>

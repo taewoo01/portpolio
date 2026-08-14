@@ -131,6 +131,13 @@ export function MarkdownPreview({ content, lightbox = false }: { content: string
           h1({ children }) { return <h1 id={headingId(children)}>{children}</h1>; },
           h2({ children }) { return <h2 id={headingId(children)}>{children}</h2>; },
           h3({ children }) { return <h3 id={headingId(children)}>{children}</h3>; },
+          table({ children }) {
+            return (
+              <div className="overflow-x-auto">
+                <table>{children}</table>
+              </div>
+            );
+          },
           img({ src, alt }) {
             const url = typeof src === "string" ? src : undefined;
             if (!lightbox || !url) {

@@ -33,4 +33,16 @@ export const TASK_WORKSPACE_DOT_CLASS: Record<TaskWorkspace, string> = {
   other: "bg-zinc-400",
 };
 
+// react-big-calendar 등 inline style이 필요한 곳에서 사용하는 실제 색상값
+export const TASK_WORKSPACE_HEX: Record<TaskWorkspace, string> = {
+  dev: "#3b82f6",
+  competition: "#ec4899",
+  study: "#a855f7",
+  exam: "#ef4444",
+  appointment: "#f97316",
+  exercise: "#22c55e",
+  alba: "#eab308",
+  other: "#71717a",
+};
+
 export const TASK_WORKSPACE_VALUES = Object.keys(TASK_WORKSPACE_LABEL) as TaskWorkspace[];

@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { deleteBlogPostAction, publishDocumentAction, unpublishPostAction } from "@/lib/actions/blog";
 import { slugify } from "@/lib/slug";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import type { BlogPostModel } from "@/generated/prisma/models";
 
 export function PublishBlogDialog({
@@ -32,6 +33,7 @@ export function PublishBlogDialog({
   post: BlogPostModel | null;
 }) {
   const router = useRouter();
+  const confirm = useConfirm();
   const [title, setTitle] = useState(post?.title ?? documentTitle);
   const [slug, setSlug] = useState(post?.slug ?? slugify(documentTitle));
   const [slugTouched, setSlugTouched] = useState(Boolean(post));
@@ -71,9 +73,15 @@ export function PublishBlogDialog({
     });
   }
 
-  function handleDelete() {
+  async function handleDelete() {
     if (!post) return;
-    if (!window.confirm("블로그 글을 삭제할까요? 원본 문서는 유지됩니다.")) return;
+    const ok = await confirm({
+      title: "블로그 글 삭제",
+      description: "블로그 글을 삭제할까요? 원본 문서는 유지됩니다.",
+      confirmText: "삭제",
+      variant: "destructive",
+    });
+    if (!ok) return;
     startDelete(async () => {
       const result = await deleteBlogPostAction(post.id);
       if (result?.error) { console.error(result.error); return; }

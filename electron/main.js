@@ -83,8 +83,8 @@ function createFloatWindow() {
   }
 
   floatWin = new BrowserWindow({
-    width: 280,
-    height: 380,
+    width: 300,
+    height: 440,
     transparent: true,
     frame: false,
     alwaysOnTop: true,

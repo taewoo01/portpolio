@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { Search as SearchIcon, FileQuestion } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { getUser } from "@/lib/server/auth";
 import { searchDocumentsAction, type WorkspaceFilter } from "@/lib/actions/search";
@@ -37,13 +38,15 @@ export default async function SearchPage({
       <SearchBar defaultQuery={query} defaultWorkspace={workspace} categories={categories} />
 
       {!query ? (
-        <p className="py-12 text-center text-sm text-muted-foreground">
+        <div className="flex flex-col items-center gap-2 py-12 text-center text-sm text-muted-foreground">
+          <SearchIcon className="size-6 text-muted-foreground/40" />
           검색어를 입력해 문서를 찾아보세요.
-        </p>
+        </div>
       ) : results.length === 0 ? (
-        <p className="py-12 text-center text-sm text-muted-foreground">
+        <div className="flex flex-col items-center gap-2 py-12 text-center text-sm text-muted-foreground">
+          <FileQuestion className="size-6 text-muted-foreground/40" />
           &ldquo;{query}&rdquo;에 대한 검색 결과가 없습니다.
-        </p>
+        </div>
       ) : (
         <SearchResults results={results} />
       )}

@@ -1,81 +1,62 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Trash2 } from "lucide-react";
+import { CheckCircle2, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { createTodoAction, deleteTodoAction, toggleTodoCompleteAction } from "@/lib/actions/todos";
-import { TASK_WORKSPACE_BADGE_CLASS, TASK_WORKSPACE_LABEL, TASK_WORKSPACE_VALUES } from "@/lib/workspace";
+import { deleteTodoAction, toggleTodoCompleteAction } from "@/lib/actions/todos";
+import { TASK_WORKSPACE_BADGE_CLASS, TASK_WORKSPACE_LABEL } from "@/lib/workspace";
 import { USER_LABEL, isOwner } from "@/lib/auth";
-import type { TaskWorkspace } from "@/generated/prisma/client";
+import { EventDialog } from "./event-dialog";
+import { useConfirm } from "@/components/ui/confirm-dialog";
+import { useToast } from "@/components/ui/toast";
 import type { TodoModel } from "@/generated/prisma/models";
 import type { User } from "@/lib/auth";
 
 export function TodoList({ todos, currentUser }: { todos: TodoModel[]; currentUser: User | null }) {
-  const [workspace, setWorkspace] = useState<TaskWorkspace>("dev");
-  const [isPending, startTransition] = useTransition();
-
-  function handleCreate(formData: FormData) {
-    startTransition(async () => {
-      const result = await createTodoAction(formData);
-      if (result?.error) console.error(result.error);
-    });
-  }
+  const confirm = useConfirm();
+  const toast = useToast();
+  const [, startTransition] = useTransition();
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   function handleToggle(todo: TodoModel, completed: boolean) {
     startTransition(async () => {
       const result = await toggleTodoCompleteAction(todo.id, completed);
-      if (result?.error) console.error(result.error);
+      if (result?.error) toast.add({ title: result.error, type: "error" });
     });
   }
 
-  function handleDelete(todo: TodoModel) {
-    if (!window.confirm(`"${todo.title}" 할 일을 삭제할까요?`)) return;
+  async function handleDelete(todo: TodoModel) {
+    const ok = await confirm({
+      title: "할 일 삭제",
+      description: `"${todo.title}" 할 일을 삭제할까요?`,
+      confirmText: "삭제",
+      variant: "destructive",
+    });
+    if (!ok) return;
     startTransition(async () => {
       const result = await deleteTodoAction(todo.id);
-      if (result?.error) console.error(result.error);
+      if (result?.error) toast.add({ title: result.error, type: "error" });
     });
   }
 
   return (
     <div className="flex flex-col gap-3">
-      <h2 className="text-lg font-medium">할 일</h2>
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="text-lg font-medium">할 일</h2>
+        <Button type="button" size="sm" className="shrink-0" onClick={() => setDialogOpen(true)}>
+          <Plus className="size-4" />
+          할 일 추가
+        </Button>
+      </div>
 
-      <form action={handleCreate} className="flex flex-col gap-2 rounded-md border p-3">
-        <Input name="title" placeholder="할 일 제목" required />
-        <div className="flex gap-2">
-          <Input name="dueDate" type="date" className="flex-1" />
-          <Select
-            name="workspace"
-            value={workspace}
-            onValueChange={(value) => setWorkspace(value as TaskWorkspace)}
-          >
-            <SelectTrigger className="w-28">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {TASK_WORKSPACE_VALUES.map((value) => (
-                <SelectItem key={value} value={value}>
-                  {TASK_WORKSPACE_LABEL[value]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Button type="submit" disabled={isPending}>
-            추가
-          </Button>
+      {todos.length === 0 ? (
+        <div className="flex h-16 items-center justify-center gap-2 rounded-xl bg-muted/40 text-sm text-muted-foreground">
+          <CheckCircle2 className="size-4 text-muted-foreground/50" />
+          할 일이 없습니다
         </div>
-      </form>
-
+      ) : (
       <ul className="flex flex-col gap-1">
         {todos.map((todo) => {
             const canDelete = isOwner(currentUser, todo.createdBy ?? null);
@@ -125,6 +106,16 @@ export function TodoList({ todos, currentUser }: { todos: TodoModel[]; currentUs
             );
           })}
       </ul>
+      )}
+
+      <EventDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        event={null}
+        defaultStart={null}
+        defaultType="todo"
+        currentUser={currentUser}
+      />
     </div>
   );
 }

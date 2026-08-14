@@ -24,18 +24,24 @@ export default async function Home() {
     ]);
 
   return (
-    <div className="space-y-10">
+    <div className="flex flex-col gap-10">
       <HeroSection user={user} />
-      <StatsCards
-        totalDocuments={stats.totalDocuments}
-        publishedPosts={stats.publishedPosts}
-        pendingTodos={stats.pendingTodos}
-        completedThisMonth={stats.completedThisMonth}
-      />
-      <TodaySection events={todayEvents} todos={pendingTodos} />
-      <RecentDocuments documents={recentDocuments} />
-      <InProgressDocuments documents={inProgressDocuments} />
-      <RecentBlogPosts posts={recentBlogPosts} />
+
+      <div className="flex flex-col gap-8">
+        <StatsCards
+          totalDocuments={stats.totalDocuments}
+          publishedPosts={stats.publishedPosts}
+          pendingTodos={stats.pendingTodos}
+          completedThisMonth={stats.completedThisMonth}
+        />
+        <TodaySection events={todayEvents} todos={pendingTodos} />
+      </div>
+
+      <div className="flex flex-col gap-6">
+        <RecentDocuments documents={recentDocuments} />
+        <InProgressDocuments documents={inProgressDocuments} />
+        <RecentBlogPosts posts={recentBlogPosts} />
+      </div>
     </div>
   );
 }

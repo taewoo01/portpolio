@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { MarkdownPreview } from "./markdown-preview";
 import { MarkdownToolbar, wrapSelection } from "./markdown-toolbar";
+import { useToast } from "@/components/ui/toast";
 
 const MODES = [
   { value: "edit", label: "편집" },
@@ -24,6 +25,7 @@ export function MarkdownEditor({
   value: string;
   onChange: (next: string) => void;
 }) {
+  const toast = useToast();
   const [mode, setMode] = useState<Mode>("edit");
   const [uploading, setUploading] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -161,7 +163,7 @@ export function MarkdownEditor({
         textarea?.setSelectionRange(pos, pos);
       });
     } catch {
-      alert("이미지 업로드에 실패했습니다.");
+      toast.add({ title: "이미지 업로드에 실패했습니다.", type: "error" });
     } finally {
       setUploading(false);
     }
